@@ -9,9 +9,9 @@ class AppColors {
   static const Color card = Color(0xFF1A1A24);
 
   // Accent — golden cinema feel
-  static const Color primary = Color(0xFFE8B84B);
-  static const Color primaryDark = Color(0xFFC99A2E);
-  static const Color primaryLight = Color(0xFFF5D080);
+  static const Color primary = Color(0xFFFEC720);
+  static const Color primaryDark = Color(0xFFD4A800);
+  static const Color primaryLight = Color(0xFFFFD84D);
 
   // Secondary — deep red
   static const Color secondary = Color(0xFFE63946);
