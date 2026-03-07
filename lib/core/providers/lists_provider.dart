@@ -34,6 +34,10 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
   }
 
   Future<void> loadFromSupabase() async {
+    // Yield past the current build frame before mutating other providers
+    await Future<void>.value();
+    if (!mounted) return;
+    _ref.read(listsLoadingProvider.notifier).state = true;
     try {
       // Upload any items that were added locally before sign-in
       final localItems = [
@@ -58,7 +62,10 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
         grouped[item.listType]?.add(item);
       }
       state = grouped;
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      if (mounted) _ref.read(listsLoadingProvider.notifier).state = false;
+    }
   }
 
   void clearAll() {
@@ -178,6 +185,8 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     }
   }
 }
+
+final listsLoadingProvider = StateProvider<bool>((ref) => false);
 
 final listsProvider =
     StateNotifierProvider<ListsNotifier, Map<ListType, List<UserListItem>>>(

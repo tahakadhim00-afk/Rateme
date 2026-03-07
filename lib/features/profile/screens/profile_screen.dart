@@ -1,6 +1,8 @@
+import 'dart:ui' show ImageFilter;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import '../../../core/constants/app_constants.dart';
@@ -20,6 +22,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final watched = ref.watch(watchedProvider);
     final watchLater = ref.watch(watchLaterProvider);
+    final isLoading = ref.watch(listsLoadingProvider);
     final User? user = ref.watch(currentUserProvider);
     final isSignedIn = user != null;
 
@@ -34,11 +37,19 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 _buildHeader(context, ref, user),
                 const SizedBox(height: 24),
-                _buildTopStats(context, watched.length, watchLater.length),
-                const SizedBox(height: 12),
-                _buildMediaTypeSplit(context, movies, tvShows),
-                const SizedBox(height: 12),
-                _buildGenreChart(context, watched),
+                if (isLoading) ...[
+                  _buildShimmerStats(context),
+                  const SizedBox(height: 12),
+                  _buildShimmerCards(context),
+                  const SizedBox(height: 12),
+                  _buildShimmerGenre(context),
+                ] else ...[
+                  _buildTopStats(context, watched.length, watchLater.length),
+                  const SizedBox(height: 12),
+                  _buildMediaTypeSplit(context, movies, tvShows),
+                  const SizedBox(height: 12),
+                  _buildGenreChart(context, watched),
+                ],
                 const SizedBox(height: 28),
                 _buildSection(context, 'App', [
                   _SettingTile(
@@ -224,6 +235,76 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildShimmerStats(BuildContext context) {
+    final c = AppThemeColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Shimmer.fromColors(
+        baseColor: c.surfaceVariant,
+        highlightColor: c.card,
+        child: Container(
+          height: 100,
+          decoration: BoxDecoration(
+            color: c.surfaceVariant,
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerCards(BuildContext context) {
+    final c = AppThemeColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Shimmer.fromColors(
+        baseColor: c.surfaceVariant,
+        highlightColor: c.card,
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 110,
+                decoration: BoxDecoration(
+                  color: c.surfaceVariant,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                height: 110,
+                decoration: BoxDecoration(
+                  color: c.surfaceVariant,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerGenre(BuildContext context) {
+    final c = AppThemeColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Shimmer.fromColors(
+        baseColor: c.surfaceVariant,
+        highlightColor: c.card,
+        child: Container(
+          height: 180,
+          decoration: BoxDecoration(
+            color: c.surfaceVariant,
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCoverPlaceholder(AppThemeColors colors) {
     return Container(
       decoration: BoxDecoration(
@@ -262,14 +343,18 @@ class ProfileScreen extends ConsumerWidget {
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppThemeColors.of(context).card,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppThemeColors.of(context).border, width: 0.5),
-        ),
-        child: Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppThemeColors.of(context).card.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppThemeColors.of(context).border.withValues(alpha: 0.5), width: 0.5),
+            ),
+            child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _StatItem(
@@ -286,6 +371,8 @@ class ProfileScreen extends ConsumerWidget {
               color: AppColors.primary,
             ),
           ],
+        ),
+          ),
         ),
       ),
     );
@@ -354,14 +441,18 @@ class ProfileScreen extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-        decoration: BoxDecoration(
-          color: AppThemeColors.of(context).card,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppThemeColors.of(context).border, width: 0.5),
-        ),
-        child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+            decoration: BoxDecoration(
+              color: AppThemeColors.of(context).card.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppThemeColors.of(context).border.withValues(alpha: 0.5), width: 0.5),
+            ),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -391,6 +482,8 @@ class ProfileScreen extends ConsumerWidget {
             }),
           ],
         ),
+        ),
+        ),
       ),
     );
   }
@@ -412,13 +505,19 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
           ],
-          Container(
-            decoration: BoxDecoration(
-              color: AppThemeColors.of(context).card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppThemeColors.of(context).border, width: 0.5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppThemeColors.of(context).card.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppThemeColors.of(context).border.withValues(alpha: 0.5), width: 0.5),
+                ),
+                child: Column(children: tiles),
+              ),
             ),
-            child: Column(children: tiles),
           ),
         ],
       ),
@@ -435,15 +534,10 @@ class ProfileScreen extends ConsumerWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
-              Container(
+              Image.asset(
+                'assets/logo_and_images/app_bar.png',
                 width: 36,
                 height: 36,
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.movie_rounded,
-                    color: Colors.black, size: 20),
               ),
               const SizedBox(width: 12),
               Text('RateMe',

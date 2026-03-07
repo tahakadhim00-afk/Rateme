@@ -65,4 +65,7 @@ class Movie {
 
   bool get hasPoster => posterPath != null && posterPath!.isNotEmpty;
   bool get hasBackdrop => backdropPath != null && backdropPath!.isNotEmpty;
+
+  /// Returns false for adult content, untitled items, or items without a poster.
+  bool get isVisible => !adult && hasPoster && title.trim().isNotEmpty;
 }

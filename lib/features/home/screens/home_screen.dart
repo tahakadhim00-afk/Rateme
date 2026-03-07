@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/providers/notification_provider.dart';
 import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/models/movie.dart';
 import '../../../core/theme/app_theme.dart';
@@ -100,7 +102,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       extraData.add(ref.watch(paginatedSectionProvider((cat, page))));
     }
 
-    final notifCount = ref.watch(notificationCountProvider);
+    final notifCount = ref.watch(unreadNotifCountProvider);
 
     final slivers = <Widget>[
       _buildAppBar(context, notifCount),
@@ -320,15 +322,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       elevation: 0,
       title: Row(
         children: [
-          Container(
+          Image.asset(
+            'assets/logo_and_images/app_bar.png',
             width: 34,
             height: 34,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child:
-                const Icon(Icons.movie_rounded, color: Colors.black, size: 20),
           ),
           const SizedBox(width: 10),
           Text(
@@ -351,10 +348,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: IconButton(
             icon: Icon(Icons.notifications_outlined,
                 color: Theme.of(context).colorScheme.onSurface),
-            onPressed: () {
-              ref.read(notificationCountProvider.notifier).state = 0;
-              _showNotificationsSheet(context);
-            },
+            onPressed: () => _showNotificationsSheet(context),
           ),
         ),
         const SizedBox(width: 4),
@@ -365,133 +359,260 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _showNotificationsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const _NotificationsSheet(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _NotificationsSheet(parentContext: context),
     );
   }
 }
 
 // ── Notifications sheet ───────────────────────────────────────────────────────
 
-class _NotificationsSheet extends StatelessWidget {
-  const _NotificationsSheet();
+class _NotificationsSheet extends ConsumerWidget {
+  final BuildContext parentContext;
+  const _NotificationsSheet({required this.parentContext});
 
-  static const _items = [
-    (
-      Icons.star_rounded,
-      'New Release',
-      'Dune: Part Two is now available to rate.',
-      '2h ago'
-    ),
-    (
-      Icons.local_fire_department_rounded,
-      'Trending Near You',
-      'Oppenheimer is trending in your region.',
-      '5h ago'
-    ),
-    (
-      Icons.movie_filter_rounded,
-      'Recommendation',
-      'Based on your ratings, try Interstellar.',
-      '1d ago'
-    ),
-  ];
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = AppThemeColors.of(context);
+    final readIds = ref.watch(readNotifProvider);
+    final nowPlaying = ref.watch(nowPlayingProvider);
+    final airingToday = ref.watch(airingTodayProvider);
+
+    final movies = nowPlaying.asData?.value.take(5).toList() ?? [];
+    final tvShows = airingToday.asData?.value.take(5).toList() ?? [];
+    final allIds = [...movies, ...tvShows].map((m) => m.id);
+    final unreadCount =
+        allIds.where((id) => !readIds.contains(id)).length;
+    final isLoading =
+        nowPlaying is AsyncLoading || airingToday is AsyncLoading;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.82,
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: colors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 8, 8),
+            child: Row(
+              children: [
+                Text(
+                  'Notifications',
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                if (unreadCount > 0)
+                  TextButton(
+                    onPressed: () => ref
+                        .read(readNotifProvider.notifier)
+                        .markAllRead(allIds),
+                    child: const Text(
+                      'Read All',
+                      style:
+                          TextStyle(color: AppColors.primary, fontSize: 13),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Divider(color: colors.border, height: 1),
+          // Body
+          Expanded(
+            child: isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary))
+                : (movies.isEmpty && tvShows.isEmpty)
+                    ? Center(
+                        child: Text('Nothing new right now',
+                            style: TextStyle(color: colors.textMuted)))
+                    : ListView(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        children: [
+                          if (movies.isNotEmpty) ...[
+                            _SectionLabel(
+                                icon: Icons.movie_rounded,
+                                label: 'Now in Cinemas'),
+                            ...movies.map((m) => _NotifTile(
+                                  movie: m,
+                                  isRead: readIds.contains(m.id),
+                                  onTap: () {
+                                    ref
+                                        .read(readNotifProvider.notifier)
+                                        .markRead(m.id);
+                                    final router =
+                                        GoRouter.of(parentContext);
+                                    Navigator.pop(context);
+                                    router.push('/movie/${m.id}',
+                                        extra: m);
+                                  },
+                                )),
+                          ],
+                          if (tvShows.isNotEmpty) ...[
+                            _SectionLabel(
+                                icon: Icons.tv_rounded,
+                                label: 'Airing Today'),
+                            ...tvShows.map((m) => _NotifTile(
+                                  movie: m,
+                                  isRead: readIds.contains(m.id),
+                                  onTap: () {
+                                    ref
+                                        .read(readNotifProvider.notifier)
+                                        .markRead(m.id);
+                                    final router =
+                                        GoRouter.of(parentContext);
+                                    Navigator.pop(context);
+                                    router.push('/tv/${m.id}', extra: m);
+                                  },
+                                )),
+                          ],
+                        ],
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _SectionLabel({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
     final colors = AppThemeColors.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 40,
-          height: 4,
-          margin: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: colors.border,
-            borderRadius: BorderRadius.circular(2),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: colors.textMuted),
+          const SizedBox(width: 6),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              color: colors.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          child: Row(
-            children: [
-              Text(
-                'Notifications',
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Dismiss',
-                  style: TextStyle(color: AppColors.primary, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Divider(color: colors.border, height: 1),
-        for (final n in _items)
-          _NotifTile(icon: n.$1, title: n.$2, body: n.$3, time: n.$4),
-        const SizedBox(height: 24),
-      ],
+        ],
+      ),
     );
   }
 }
 
 class _NotifTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String body;
-  final String time;
+  final Movie movie;
+  final bool isRead;
+  final VoidCallback onTap;
 
-  const _NotifTile(
-      {required this.icon,
-      required this.title,
-      required this.body,
-      required this.time});
+  const _NotifTile({
+    required this.movie,
+    required this.isRead,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = AppThemeColors.of(context);
-    return ListTile(
-      leading: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        color: isRead ? Colors.transparent : AppColors.primary.withValues(alpha: 0.05),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Unread dot
+            Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isRead
+                    ? Colors.transparent
+                    : AppColors.primary,
+              ),
+            ),
+            // Poster
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: movie.posterPath != null
+                  ? Image.network(
+                      AppConstants.posterUrl(movie.posterPath!,
+                          size: AppConstants.posterW342),
+                      width: 38,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, e, stack) => _posterFallback(colors),
+                    )
+                  : _posterFallback(colors),
+            ),
+            const SizedBox(width: 12),
+            // Text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    movie.title,
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontWeight:
+                          isRead ? FontWeight.w500 : FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    movie.year.isNotEmpty ? movie.year : 'Coming soon',
+                    style: TextStyle(
+                        color: colors.textMuted, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: colors.textMuted, size: 18),
+          ],
         ),
-        child: Icon(icon, color: AppColors.primary, size: 22),
       ),
-      title: Text(
-        title,
-        style: TextStyle(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w600,
-            fontSize: 14),
+    );
+  }
+
+  Widget _posterFallback(AppThemeColors colors) {
+    return Container(
+      width: 38,
+      height: 56,
+      decoration: BoxDecoration(
+        color: colors.surfaceVariant,
+        borderRadius: BorderRadius.circular(6),
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(body,
-              style: TextStyle(
-                  color: colors.textSecondary, fontSize: 12)),
-          const SizedBox(height: 2),
-          Text(time,
-              style: TextStyle(
-                  color: colors.textMuted, fontSize: 11)),
-        ],
-      ),
-      isThreeLine: true,
+      child: Icon(Icons.movie_rounded, size: 18, color: colors.textMuted),
     );
   }
 }
