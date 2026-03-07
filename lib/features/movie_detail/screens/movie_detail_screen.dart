@@ -1,8 +1,11 @@
+// ignore: unnecessary_import
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/movie_detail.dart';
 import '../../../core/models/movie.dart';
@@ -24,11 +27,7 @@ class MovieDetailScreen extends ConsumerWidget {
 
     return detailAsync.when(
       data: (movie) => _DetailView(movie: movie),
-      loading: () => const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      ),
+      loading: () => const _MovieDetailSkeleton(),
       error: (e, _) => Scaffold(
         appBar: AppBar(),
         body: Builder(
@@ -87,8 +86,32 @@ class _DetailViewState extends ConsumerState<_DetailView> {
     final recommendations = ref.watch(movieRecommendationsProvider(movie.id));
     final castAsync = ref.watch(movieCastProvider(movie.id));
 
+    final bgImageUrl = movie.hasBackdrop
+        ? AppConstants.backdropUrl(movie.backdropPath!)
+        : movie.hasPoster
+            ? AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterW500)
+            : null;
+
     return Scaffold(
-      body: CustomScrollView(
+      backgroundColor: AppThemeColors.of(context).background,
+      body: Stack(
+        children: [
+          // Fixed blurred background — stays in place while content scrolls
+          if (bgImageUrl != null) ...[
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                child: CachedNetworkImage(
+                  imageUrl: bgImageUrl,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: Container(color: Colors.black.withValues(alpha: 0.78)),
+            ),
+          ],
+          CustomScrollView(
         slivers: [
           _buildSliverAppBar(context, movie, isWatchLater, listNotifier),
           SliverToBoxAdapter(
@@ -306,6 +329,8 @@ class _DetailViewState extends ConsumerState<_DetailView> {
             ),
           ),
         ],
+          ),
+        ],
       ),
     );
   }
@@ -329,6 +354,8 @@ class _DetailViewState extends ConsumerState<_DetailView> {
     return SliverAppBar(
       expandedHeight: 300,
       pinned: true,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       leading: GestureDetector(
         onTap: () => context.pop(),
         child: Container(
@@ -365,6 +392,7 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         background: Stack(
           fit: StackFit.expand,
           children: [
+            // Clear photo/backdrop
             if (movie.hasBackdrop)
               CachedNetworkImage(
                 imageUrl: AppConstants.backdropUrl(movie.backdropPath!),
@@ -378,13 +406,18 @@ class _DetailViewState extends ConsumerState<_DetailView> {
               )
             else
               Container(color: AppThemeColors.of(context).surface),
-            Container(
+            // Clean gradient fade: transparent → page background color
+            const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.transparent, AppThemeColors.of(context).background],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  stops: const [0.4, 1.0],
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    Color(0xFF0A0A0F),
+                  ],
+                  stops: [0.0, 0.45, 1.0],
                 ),
               ),
             ),
@@ -656,6 +689,7 @@ class _RoundActionBtn extends StatelessWidget {
         onTap: onTap,
         child: Builder(builder: (context) {
           final colors = AppThemeColors.of(context);
+
           return AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -690,4 +724,184 @@ class _RoundActionBtn extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
+class _MovieDetailSkeleton extends StatelessWidget {
+  const _MovieDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Shimmer.fromColors(
+        baseColor: AppColors.surfaceVariant,
+        highlightColor: AppColors.border,
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Hero image
+              Container(height: 300, color: Colors.white),
+
+              // Main info row
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(width: 110, height: 163, color: Colors.white),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(height: 20, color: Colors.white),
+                          const SizedBox(height: 8),
+                          Container(height: 20, width: 140, color: Colors.white),
+                          const SizedBox(height: 14),
+                          Row(children: [
+                            _SBox(w: 76, h: 28, r: 8),
+                            const SizedBox(width: 8),
+                            _SBox(w: 68, h: 28, r: 8),
+                          ]),
+                          const SizedBox(height: 10),
+                          _SBox(w: 72, h: 22, r: 6),
+                          const SizedBox(height: 6),
+                          _SBox(w: 80, h: 13, r: 4),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Action buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(children: [
+                  Expanded(child: _SBox(h: 56, r: 14)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _SBox(h: 56, r: 14)),
+                ]),
+              ),
+              const SizedBox(height: 28),
+
+              // Overview
+              _SkeletonSection(
+                titleWidth: 80,
+                lines: const [null, null, 180],
+              ),
+              const SizedBox(height: 28),
+
+              // Rating
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SBox(w: 130, h: 16, r: 4),
+                    const SizedBox(height: 14),
+                    _SBox(w: 176, h: 36, r: 8),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Genres chips
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SBox(w: 60, h: 16, r: 4),
+                    const SizedBox(height: 12),
+                    Row(children: [
+                      _SBox(w: 80, h: 32, r: 20),
+                      const SizedBox(width: 8),
+                      _SBox(w: 70, h: 32, r: 20),
+                      const SizedBox(width: 8),
+                      _SBox(w: 90, h: 32, r: 20),
+                    ]),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Cast
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _SBox(w: 60, h: 16, r: 4),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 160,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 6,
+                  itemBuilder: (_, i) => Padding(
+                    padding: EdgeInsets.only(right: i < 5 ? 14 : 0),
+                    child: Column(children: [
+                      _SBox(w: 90, h: 110, r: 12),
+                      const SizedBox(height: 6),
+                      _SBox(w: 66, h: 10, r: 4),
+                    ]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Solid white placeholder box — Shimmer.fromColors animates the color.
+class _SBox extends StatelessWidget {
+  final double? w;
+  final double? h;
+  final double r;
+  const _SBox({this.w, this.h, this.r = 6});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: w,
+        height: h,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(r),
+        ),
+      );
+}
+
+class _SkeletonSection extends StatelessWidget {
+  final double titleWidth;
+  final List<double?> lines; // null = full width
+  const _SkeletonSection({required this.titleWidth, required this.lines});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SBox(w: titleWidth, h: 16, r: 4),
+            const SizedBox(height: 12),
+            ...lines.map((w) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: _SBox(w: w, h: 13, r: 4),
+                )),
+          ],
+        ),
+      );
 }

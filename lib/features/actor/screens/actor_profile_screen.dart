@@ -1,4 +1,7 @@
+// ignore: unnecessary_import
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -19,11 +22,7 @@ class ActorProfileScreen extends ConsumerWidget {
 
     return actorAsync.when(
       data: (actor) => _ActorView(actor: actor),
-      loading: () => const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      ),
+      loading: () => const _ActorProfileSkeleton(),
       error: (e, _) => Scaffold(
         appBar: AppBar(),
         body: Center(
@@ -47,8 +46,31 @@ class _ActorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bgImageUrl = actor.hasProfile
+        ? AppConstants.posterUrl(actor.profilePath!, size: AppConstants.posterW500)
+        : null;
+
     return Scaffold(
-      body: CustomScrollView(
+      backgroundColor: AppThemeColors.of(context).background,
+      body: Stack(
+        children: [
+          // Fixed blurred background — stays in place while content scrolls
+          if (bgImageUrl != null) ...[
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                child: CachedNetworkImage(
+                  imageUrl: bgImageUrl,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: Container(color: Colors.black.withValues(alpha: 0.78)),
+            ),
+          ],
+          CustomScrollView(
         slivers: [
           _buildAppBar(context),
           SliverToBoxAdapter(
@@ -105,20 +127,24 @@ class _ActorView extends StatelessWidget {
             ),
           ),
         ],
+          ),
+        ],
       ),
     );
   }
 
   SliverAppBar _buildAppBar(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: actor.hasProfile ? 340 : 0,
+      expandedHeight: actor.hasProfile ? 420 : 0,
       pinned: true,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       leading: GestureDetector(
         onTap: () => context.pop(),
         child: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.5),
+            color: Colors.black.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(Icons.arrow_back_ios_rounded,
@@ -130,23 +156,55 @@ class _ActorView extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
+                  // Clear photo
                   CachedNetworkImage(
                     imageUrl: AppConstants.posterUrl(actor.profilePath!,
                         size: AppConstants.posterW500),
                     fit: BoxFit.cover,
                     alignment: Alignment.topCenter,
                   ),
+                  // Clean gradient fade: transparent → page background color
                   Container(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          AppThemeColors.of(context).background,
-                        ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        stops: const [0.4, 1.0],
+                        colors: [
+                          Colors.transparent,
+                          Colors.transparent,
+                          AppColors.background,
+                        ],
+                        stops: [0.0, 0.45, 1.0],
                       ),
+                    ),
+                  ),
+                  // Name + department at the bottom
+                  Positioned(
+                    bottom: 24,
+                    left: 20,
+                    right: 20,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          actor.name,
+                          style: const TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                            height: 1.1,
+                          ),
+                        ),
+                        if (actor.knownForDepartment.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          _InfoChip(
+                            icon: Icons.movie_creation_outlined,
+                            label: actor.knownForDepartment,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
@@ -157,23 +215,24 @@ class _ActorView extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
+    // Name + dept are already shown inside the banner when a profile photo exists
+    if (actor.hasProfile) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Circular profile photo (small, if no backdrop)
-          if (!actor.hasProfile)
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppThemeColors.of(context).surfaceVariant,
-              ),
-              child: const Icon(Icons.person_rounded, size: 44),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppThemeColors.of(context).surfaceVariant,
             ),
-          if (!actor.hasProfile) const SizedBox(width: 16),
+            child: const Icon(Icons.person_rounded, size: 44),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,31 +305,29 @@ class _ActorView extends StatelessWidget {
                             color:
                                 AppThemeColors.of(context).textMuted),
                         const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.label,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
-                                    color: AppThemeColors.of(context)
-                                        .textMuted,
-                                  ),
-                            ),
-                            const SizedBox(height: 2),
-                            SizedBox(
-                              width:
-                                  MediaQuery.of(context).size.width - 70,
-                              child: Text(
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.label,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      color: AppThemeColors.of(context)
+                                          .textMuted,
+                                    ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
                                 item.value,
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodyMedium,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -364,30 +421,189 @@ class _ExpandableBio extends StatefulWidget {
 class _ExpandableBioState extends State<_ExpandableBio> {
   bool _expanded = false;
 
+  bool _checkOverflow(BuildContext context, double maxWidth) {
+    final style = Theme.of(context).textTheme.bodyLarge;
+    final tp = TextPainter(
+      text: TextSpan(text: widget.bio, style: style),
+      maxLines: 5,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: maxWidth);
+    return tp.didExceedMaxLines;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.bio,
-          style: Theme.of(context).textTheme.bodyLarge,
-          maxLines: _expanded ? null : 5,
-          overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: () => setState(() => _expanded = !_expanded),
-          child: Text(
-            _expanded ? 'Show less' : 'Read more',
-            style: TextStyle(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final overflows = _checkOverflow(context, constraints.maxWidth);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.bio,
+              style: Theme.of(context).textTheme.bodyLarge,
+              maxLines: _expanded ? null : 5,
+              overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
             ),
-          ),
-        ),
-      ],
+            if (overflows) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Text(
+                  _expanded ? 'Show less' : 'Read more',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
+class _ActorProfileSkeleton extends StatelessWidget {
+  const _ActorProfileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    return Scaffold(
+      backgroundColor: colors.background,
+      body: Shimmer.fromColors(
+        baseColor: colors.surfaceVariant,
+        highlightColor: colors.border,
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header image with name overlay
+              Stack(
+                children: [
+                  Container(height: 420, width: double.infinity, color: Colors.white),
+                  Positioned(
+                    bottom: 24,
+                    left: 20,
+                    right: 20,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ASBox(w: 200, h: 28, r: 4),
+                        const SizedBox(height: 10),
+                        _ASBox(w: 90, h: 28, r: 8),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+
+              // Biography
+              _ASkeletonSection(titleWidth: 80, lines: const [null, null, null, 160]),
+              const SizedBox(height: 28),
+
+              // Personal info
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ASBox(w: 110, h: 16, r: 4),
+                    const SizedBox(height: 14),
+                    ...List.generate(3, (_) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _ASBox(w: 18, h: 18, r: 4),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _ASBox(w: 50, h: 10, r: 4),
+                              const SizedBox(height: 5),
+                              _ASBox(w: 180, h: 13, r: 4),
+                            ],
+                          ),
+                        ],
+                      ),
+                    )),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Known For
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _ASBox(w: 90, h: 16, r: 4),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 195,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 4,
+                  itemBuilder: (_, i) => Padding(
+                    padding: EdgeInsets.only(right: i < 3 ? 14 : 0),
+                    child: _ASBox(w: 120, h: 195, r: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ASBox extends StatelessWidget {
+  final double? w;
+  final double? h;
+  final double r;
+  const _ASBox({this.w, this.h, this.r = 6});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: w,
+        height: h,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(r),
+        ),
+      );
+}
+
+class _ASkeletonSection extends StatelessWidget {
+  final double titleWidth;
+  final List<double?> lines;
+  const _ASkeletonSection({required this.titleWidth, required this.lines});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ASBox(w: titleWidth, h: 16, r: 4),
+            const SizedBox(height: 12),
+            ...lines.map((w) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: _ASBox(w: w, h: 13, r: 4),
+                )),
+          ],
+        ),
+      );
+}
+

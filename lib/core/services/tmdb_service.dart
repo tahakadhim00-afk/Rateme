@@ -20,34 +20,37 @@ class TmdbService {
     ));
   }
 
+  List<Movie> _clean(List<Movie> movies) =>
+      movies.where((m) => m.isVisible).toList();
+
   Future<List<Movie>> getTrending({String timeWindow = 'week'}) async {
     final resp = await _dio.get('/trending/movie/$timeWindow');
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<List<Movie>> getNowPlaying({int page = 1}) async {
     final resp = await _dio.get('/movie/now_playing', queryParameters: {'page': page});
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<List<Movie>> getPopular({int page = 1}) async {
     final resp = await _dio.get('/movie/popular', queryParameters: {'page': page});
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<List<Movie>> getTopRated({int page = 1}) async {
     final resp = await _dio.get('/movie/top_rated', queryParameters: {'page': page});
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<List<Movie>> getUpcoming({int page = 1}) async {
     final resp = await _dio.get('/movie/upcoming', queryParameters: {'page': page});
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<List<Movie>> searchMovies(String query, {int page = 1}) async {
@@ -57,7 +60,7 @@ class TmdbService {
       'page': page,
     });
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<MovieDetail> getMovieDetail(int movieId) async {
@@ -80,7 +83,7 @@ class TmdbService {
   Future<List<Movie>> getMovieRecommendations(int movieId) async {
     final resp = await _dio.get('/movie/$movieId/recommendations');
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<List<Movie>> discoverByGenre(int genreId, {int page = 1}) async {
@@ -90,7 +93,7 @@ class TmdbService {
       'sort_by': 'popularity.desc',
     });
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   Future<List<Genre>> getGenres() async {
@@ -104,25 +107,25 @@ class TmdbService {
   Future<List<Movie>> getTrendingTv({String timeWindow = 'week'}) async {
     final resp = await _dio.get('/trending/tv/$timeWindow');
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList());
   }
 
   Future<List<Movie>> getPopularTv({int page = 1}) async {
     final resp = await _dio.get('/tv/popular', queryParameters: {'page': page});
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList());
   }
 
   Future<List<Movie>> getTopRatedTv({int page = 1}) async {
     final resp = await _dio.get('/tv/top_rated', queryParameters: {'page': page});
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList());
   }
 
   Future<List<Movie>> getAiringToday({int page = 1}) async {
     final resp = await _dio.get('/tv/airing_today', queryParameters: {'page': page});
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList());
   }
 
   // ── TV Show detail ─────────────────────────────────────────────────────────
@@ -141,7 +144,7 @@ class TmdbService {
   Future<List<Movie>> getTvRecommendations(int tvId) async {
     final resp = await _dio.get('/tv/$tvId/recommendations');
     final results = resp.data['results'] as List<dynamic>;
-    return results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList();
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList());
   }
 
   // ── Multi-search (movies + TV) ─────────────────────────────────────────────
@@ -153,11 +156,11 @@ class TmdbService {
       'page': page,
     });
     final results = resp.data['results'] as List<dynamic>;
-    return results
+    return _clean(results
         .map((e) => e as Map<String, dynamic>)
         .where((e) => e['media_type'] == 'movie' || e['media_type'] == 'tv')
         .map((e) => Movie.fromJson(e))
-        .toList();
+        .toList());
   }
 
   // ── Images (backdrops) ─────────────────────────────────────────────────────

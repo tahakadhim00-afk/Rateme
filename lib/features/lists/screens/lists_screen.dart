@@ -36,6 +36,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
   Widget build(BuildContext context) {
     final watched    = ref.watch(watchedProvider);
     final watchLater = ref.watch(watchLaterProvider);
+    final isLoading  = ref.watch(listsLoadingProvider);
     final notifier   = ref.read(listsProvider.notifier);
 
     return Scaffold(
@@ -59,14 +60,23 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
             const SizedBox(height: 16),
 
             // ── Tab bar ─────────────────────────────────────────────────────
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: AppThemeColors.of(context).surfaceVariant,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-              ),
-              child: TabBar(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppThemeColors.of(context).surfaceVariant.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppThemeColors.of(context).border.withValues(alpha: 0.4),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: TabBar(
                 controller: _tabController,
                 indicator: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.18),
@@ -88,6 +98,9 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
                   _tab(Icons.bookmark_rounded,      'Watch Later',  watchLater.length),
                 ],
               ),
+                  ),
+                ),
+              ),
             ),
 
             const SizedBox(height: 16),
@@ -99,6 +112,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
                 children: [
                   _GridTab(
                     items: watched,
+                    isLoading: isLoading,
                     listType: ListType.watched,
                     emptyIcon: Icons.check_circle_outline_rounded,
                     emptyMessage: 'Nothing watched yet',
@@ -107,6 +121,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
                   ),
                   _GridTab(
                     items: watchLater,
+                    isLoading: isLoading,
                     listType: ListType.watchLater,
                     emptyIcon: Icons.bookmark_border_rounded,
                     emptyMessage: 'Watch later is empty',
@@ -156,6 +171,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
 
 class _GridTab extends StatelessWidget {
   final List<UserListItem> items;
+  final bool isLoading;
   final ListType listType;
   final IconData emptyIcon;
   final String emptyMessage;
@@ -164,6 +180,7 @@ class _GridTab extends StatelessWidget {
 
   const _GridTab({
     required this.items,
+    required this.isLoading,
     required this.listType,
     required this.emptyIcon,
     required this.emptyMessage,
@@ -173,6 +190,28 @@ class _GridTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      final c = AppThemeColors.of(context);
+      return Shimmer.fromColors(
+        baseColor: c.surfaceVariant,
+        highlightColor: c.card,
+        child: GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 10,
+            childAspectRatio: 0.56,
+          ),
+          itemCount: 9,
+          itemBuilder: (ctx, i) => ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(color: c.surfaceVariant),
+          ),
+        ),
+      );
+    }
+
     if (items.isEmpty) {
       return _EmptyState(
         icon: emptyIcon,
@@ -452,14 +491,24 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppThemeColors.of(context).surfaceVariant,
-                borderRadius: BorderRadius.circular(24),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppThemeColors.of(context).surfaceVariant.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: AppThemeColors.of(context).border.withValues(alpha: 0.4),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Icon(icon, color: AppThemeColors.of(context).textMuted, size: 36),
+                ),
               ),
-              child: Icon(icon, color: AppThemeColors.of(context).textMuted, size: 36),
             ),
             const SizedBox(height: 20),
             Text(message,

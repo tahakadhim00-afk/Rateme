@@ -130,6 +130,3 @@ final personDetailProvider =
   return ActorDetail.fromJson(data);
 });
 
-// ── Notifications ─────────────────────────────────────────────────────────
-
-final notificationCountProvider = StateProvider<int>((ref) => 3);

@@ -1,6 +1,8 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../core/models/genre.dart';
 import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -28,9 +30,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final query = ref.watch(searchQueryProvider);
     final results = ref.watch(searchResultsProvider);
     final selectedGenre = ref.watch(selectedGenreProvider);
-    final genreResults = selectedGenre != null
-        ? ref.watch(discoverByGenreProvider(selectedGenre))
-        : null;
 
     return Scaffold(
       body: SafeArea(
@@ -78,18 +77,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             // Content
             Expanded(
               child: query.trim().isEmpty
-                  ? _BrowseView(
-                      selectedGenre: selectedGenre,
-                      genreResults: genreResults,
-                    )
+                  ? _BrowseView(selectedGenre: selectedGenre)
                   : results.when(
                       data: (movies) => movies.isEmpty
                           ? _EmptyResults(query: query)
                           : _SearchResults(movies: movies),
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.primary),
-                      ),
+                      loading: () => _ShimmerGrid(padding: const EdgeInsets.symmetric(horizontal: 20)),
                       error: (e, _) => Center(
                         child: Text('Error: $e',
                             style: TextStyle(
@@ -135,13 +128,15 @@ class _SearchResults extends StatelessWidget {
 
 class _BrowseView extends ConsumerWidget {
   final int? selectedGenre;
-  final dynamic genreResults;
 
-  const _BrowseView({this.selectedGenre, this.genreResults});
+  const _BrowseView({this.selectedGenre});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final genres = ref.watch(genresProvider);
+    final genreResults = selectedGenre != null
+        ? ref.watch(discoverByGenreProvider(selectedGenre!))
+        : null;
 
     return SingleChildScrollView(
       child: Column(
@@ -156,10 +151,7 @@ class _BrowseView extends ConsumerWidget {
               onSelect: (id) =>
                   ref.read(selectedGenreProvider.notifier).state = id,
             ),
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
+            loading: () => const _ShimmerChips(),
             error: (_, s) => _GenreChips(
               genres: kMovieGenres,
               selectedId: selectedGenre,
@@ -169,7 +161,7 @@ class _BrowseView extends ConsumerWidget {
           ),
           if (selectedGenre != null && genreResults != null) ...[
             const SizedBox(height: 24),
-            genreResults!.when(
+            genreResults.when(
               data: (movies) => GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -181,20 +173,22 @@ class _BrowseView extends ConsumerWidget {
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 16,
                 ),
-                itemCount: (movies as List).length,
+                itemCount: movies.length,
                 itemBuilder: (ctx, i) {
                   final movie = movies[i];
                   return MovieCard(
                     movie: movie,
                     width: double.infinity,
-                    onTap: () => ctx.push('/movie/${movie.id}'),
+                    onTap: () => ctx.push(
+                        movie.mediaType == 'tv'
+                            ? '/tv/${movie.id}'
+                            : '/movie/${movie.id}'),
                   );
                 },
               ),
-              loading: () => const Padding(
-                padding: EdgeInsets.all(40),
-                child:
-                    Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              loading: () => const _ShimmerGrid(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                shrinkWrap: true,
               ),
               error: (e, _) => const SizedBox.shrink(),
             ),
@@ -229,7 +223,11 @@ class _GenreChips extends StatelessWidget {
           final selected = selectedId == g.id;
           return GestureDetector(
             onTap: () => onSelect(selected ? null : g.id),
-            child: AnimatedContainer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -255,9 +253,77 @@ class _GenreChips extends StatelessWidget {
                       : FontWeight.w400,
                 ),
               ),
+                ),
+              ),
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+class _ShimmerGrid extends StatelessWidget {
+  final EdgeInsetsGeometry padding;
+  final bool shrinkWrap;
+
+  const _ShimmerGrid({
+    required this.padding,
+    this.shrinkWrap = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppThemeColors.of(context);
+    return Shimmer.fromColors(
+      baseColor: c.surfaceVariant,
+      highlightColor: c.card,
+      child: GridView.builder(
+        shrinkWrap: shrinkWrap,
+        physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
+        padding: padding,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          childAspectRatio: 0.58,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 16,
+        ),
+        itemCount: 9,
+        itemBuilder: (ctx, i) => ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(color: c.surfaceVariant),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShimmerChips extends StatelessWidget {
+  const _ShimmerChips();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppThemeColors.of(context);
+    final widths = [72.0, 56.0, 88.0, 64.0, 80.0, 60.0, 76.0, 68.0, 52.0, 84.0];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Shimmer.fromColors(
+        baseColor: c.surfaceVariant,
+        highlightColor: c.card,
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: widths
+              .map((w) => Container(
+                    width: w,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: c.surfaceVariant,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ))
+              .toList(),
+        ),
       ),
     );
   }
