@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/config/secrets.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/theme_provider.dart';
 import 'shared/navigation/app_router.dart';
@@ -10,18 +11,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: 'https://SUPABASE_PROJECT_REF_REMOVED.supabase.co',
-    anonKey:
-        '***REMOVED***'
-        '.***REMOVED***'
-        '***REMOVED***',
+    url: Secrets.supabaseUrl,
+    anonKey: Secrets.supabaseAnonKey,
   );
 
   SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-    ),
+    const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
+
   runApp(const ProviderScope(child: RateMeApp()));
 }
 

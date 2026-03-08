@@ -13,47 +13,30 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
           ListType.watched: [],
           ListType.watchLater: [],
         }) {
-    _init();
-  }
-
-  void _init() {
-    // React to sign-in and sign-out for the lifetime of this notifier.
-    // fireImmediately: true also handles the case where the user is already
-    // signed in when the provider is first created.
     _ref.listen<bool>(
       isSignedInProvider,
-      (previous, next) {
-        if (next) {
-          loadFromSupabase();
-        } else {
-          clearAll();
-        }
-      },
+      (_, next) => next ? loadFromSupabase() : clearAll(),
       fireImmediately: true,
     );
   }
 
   Future<void> loadFromSupabase() async {
-    // Yield past the current build frame before mutating other providers
     await Future<void>.value();
     if (!mounted) return;
     _ref.read(listsLoadingProvider.notifier).state = true;
     try {
-      // Upload any items that were added locally before sign-in
-      final localItems = [
+      for (final item in [
         ...state[ListType.watched] ?? [],
         ...state[ListType.watchLater] ?? [],
         ...state[ListType.favorites] ?? [],
-      ];
-      for (final item in localItems) {
+      ]) {
         try {
           await supabaseService.addToList(item);
         } catch (_) {}
       }
 
-      // Load the full merged state from Supabase
       final items = await supabaseService.fetchUserLists();
-      final Map<ListType, List<UserListItem>> grouped = {
+      final grouped = <ListType, List<UserListItem>>{
         ListType.favorites: [],
         ListType.watched: [],
         ListType.watchLater: [],
@@ -76,8 +59,13 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     };
   }
 
-  Future<void> addToList(ListType type, Movie movie,
-      {double? userRating, int? runtime, List<int> genreIds = const []}) async {
+  Future<void> addToList(
+    ListType type,
+    Movie movie, {
+    double? userRating,
+    int? runtime,
+    List<int> genreIds = const [],
+  }) async {
     if (isInList(type, movie.id)) return;
     final item = UserListItem(
       mediaId: movie.id,
@@ -99,10 +87,7 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     if (supabaseService.isSignedIn) {
       try {
         await supabaseService.addToList(item);
-      } catch (e) {
-        // ignore: avoid_print
-        print('[Lists] addToList failed: $e');
-      }
+      } catch (_) {}
     }
   }
 
@@ -114,15 +99,16 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     if (supabaseService.isSignedIn) {
       try {
         await supabaseService.removeFromList(type, mediaId);
-      } catch (e) {
-        // ignore: avoid_print
-        print('[Lists] removeFromList failed: $e');
-      }
+      } catch (_) {}
     }
   }
 
-  Future<void> toggleList(ListType type, Movie movie,
-      {int? runtime, List<int> genreIds = const []}) async {
+  Future<void> toggleList(
+    ListType type,
+    Movie movie, {
+    int? runtime,
+    List<int> genreIds = const [],
+  }) async {
     if (isInList(type, movie.id)) {
       await removeFromList(type, movie.id);
     } else {
@@ -130,19 +116,19 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     }
   }
 
-  /// Adds to Watched and removes from Watch Later (mutually exclusive).
-  Future<void> toggleWatched(Movie movie,
-      {int? runtime, List<int> genreIds = const []}) async {
+  Future<void> toggleWatched(
+    Movie movie, {
+    int? runtime,
+    List<int> genreIds = const [],
+  }) async {
     if (isInList(ListType.watched, movie.id)) {
       await removeFromList(ListType.watched, movie.id);
     } else {
       await removeFromList(ListType.watchLater, movie.id);
-      await addToList(ListType.watched, movie,
-          runtime: runtime, genreIds: genreIds);
+      await addToList(ListType.watched, movie, runtime: runtime, genreIds: genreIds);
     }
   }
 
-  /// Adds to Watch Later and removes from Watched (mutually exclusive).
   Future<void> toggleWatchLater(Movie movie) async {
     if (isInList(ListType.watchLater, movie.id)) {
       await removeFromList(ListType.watchLater, movie.id);
@@ -152,9 +138,8 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     }
   }
 
-  bool isInList(ListType type, int mediaId) {
-    return (state[type] ?? []).any((e) => e.mediaId == mediaId);
-  }
+  bool isInList(ListType type, int mediaId) =>
+      (state[type] ?? []).any((e) => e.mediaId == mediaId);
 
   Future<void> updateRating(int mediaId, double rating) async {
     state = {
@@ -193,14 +178,14 @@ final listsProvider =
   (ref) => ListsNotifier(ref),
 );
 
-final favoritesProvider = Provider<List<UserListItem>>((ref) {
-  return ref.watch(listsProvider)[ListType.favorites] ?? [];
-});
+final favoritesProvider = Provider<List<UserListItem>>(
+  (ref) => ref.watch(listsProvider)[ListType.favorites] ?? [],
+);
 
-final watchedProvider = Provider<List<UserListItem>>((ref) {
-  return ref.watch(listsProvider)[ListType.watched] ?? [];
-});
+final watchedProvider = Provider<List<UserListItem>>(
+  (ref) => ref.watch(listsProvider)[ListType.watched] ?? [],
+);
 
-final watchLaterProvider = Provider<List<UserListItem>>((ref) {
-  return ref.watch(listsProvider)[ListType.watchLater] ?? [];
-});
+final watchLaterProvider = Provider<List<UserListItem>>(
+  (ref) => ref.watch(listsProvider)[ListType.watchLater] ?? [],
+);
