@@ -122,6 +122,18 @@ final tvRecommendationsProvider =
   return ref.watch(tmdbServiceProvider).getTvRecommendations(tvId);
 });
 
+// ── Videos (trailers) ────────────────────────────────────────────────────
+
+final movieVideosProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, int>((ref, movieId) async {
+  return ref.watch(tmdbServiceProvider).getMovieVideos(movieId);
+});
+
+final tvVideosProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, int>((ref, tvId) async {
+  return ref.watch(tmdbServiceProvider).getTvVideos(tvId);
+});
+
 // ── Actor / Person ────────────────────────────────────────────────────────
 
 final personDetailProvider =

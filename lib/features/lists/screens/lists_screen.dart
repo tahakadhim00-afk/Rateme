@@ -365,60 +365,65 @@ class _PosterCard extends StatelessWidget {
                 : _fallback(context),
 
             // ── Blurred info box ──────────────────────────────────────────
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(12)),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          item.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            height: 1.3,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.star_rounded,
-                                color: AppColors.primary, size: 11),
-                            const SizedBox(width: 2),
-                            Text(
-                              item.voteAverage.toStringAsFixed(1),
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
+            Positioned.fill(
+              child: ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black],
+                  stops: [0.62, 1.0],
+                ).createShader(bounds),
+                blendMode: BlendMode.dstIn,
+                child: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      alignment: Alignment.bottomLeft,
+                      padding: const EdgeInsets.fromLTRB(8, 20, 8, 8),
+                      color: Colors.black.withValues(alpha: 0.15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              height: 1.3,
                             ),
-                            if (item.year.isNotEmpty) ...[
-                              const SizedBox(width: 5),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.star_rounded,
+                                  color: AppColors.primary, size: 11),
+                              const SizedBox(width: 2),
                               Text(
-                                item.year,
+                                item.voteAverage.toStringAsFixed(1),
                                 style: const TextStyle(
-                                  color: Color(0xAAFFFFFF),
+                                  color: AppColors.primary,
                                   fontSize: 10,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
+                              if (item.year.isNotEmpty) ...[
+                                const SizedBox(width: 5),
+                                Text(
+                                  item.year,
+                                  style: const TextStyle(
+                                    color: Color(0xAAFFFFFF),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

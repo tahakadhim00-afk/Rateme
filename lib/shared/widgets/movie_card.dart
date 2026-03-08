@@ -32,7 +32,7 @@ class MovieCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── Poster ──────────────────────────────────────────────────
+              // ── 1. Poster Image ──────────────────────────────────────────
               movie.hasPoster
                   ? CachedNetworkImage(
                       imageUrl: AppConstants.posterUrl(movie.posterPath!),
@@ -42,64 +42,84 @@ class MovieCard extends StatelessWidget {
                     )
                   : _posterFallback(context),
 
-              // ── Blurred info box ─────────────────────────────────────────
+              // ── 2. Maximum Cinematic Radial Blur ─────────────────────────
+              Positioned.fill(
+                child: ShaderMask(
+                  shaderCallback: (bounds) => const RadialGradient(
+                    center: Alignment.bottomLeft,
+                    radius: 2.0, // Expanded radius to cover more ground
+                    colors: [Colors.black, Colors.transparent],
+                    stops: [0.25, 1.0], // Pushes extreme blur density
+                  ).createShader(bounds),
+                  blendMode: BlendMode.dstIn,
+                  child: ClipRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60), // Extreme blur level
+                      child: Container(
+                        // Heavy opacity for maximum "frosted" impact
+                        color: Colors.black.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── 3. Sharp Text Layer (Unmasked) ───────────────────────────
               Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(12)),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                    child: Container(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            movie.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              height: 1.3,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.star_rounded,
-                                  color: AppColors.primary, size: 11),
-                              const SizedBox(width: 2),
-                              Text(
-                                movie.ratingFormatted,
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              if (movie.year.isNotEmpty) ...[
-                                const SizedBox(width: 5),
-                                Text(
-                                  movie.year,
-                                  style: const TextStyle(
-                                    color: Color(0xAAFFFFFF),
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ],
+                left: 12,
+                bottom: 12,
+                right: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      movie.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900, 
+                        height: 1.1,
+                        letterSpacing: -0.2,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black,
+                            offset: Offset(0, 2),
+                            blurRadius: 8,
                           ),
                         ],
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded,
+                            color: AppColors.primary, size: 14),
+                        const SizedBox(width: 3),
+                        Text(
+                          movie.ratingFormatted,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        if (movie.year.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            movie.year,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -108,6 +128,7 @@ class MovieCard extends StatelessWidget {
       ),
     );
   }
+
 
   Widget _shimmerBox(BuildContext context) {
     final colors = AppThemeColors.of(context);

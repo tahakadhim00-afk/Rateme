@@ -15,13 +15,36 @@ class TmdbService {
         'Authorization': 'Bearer ${AppConstants.tmdbReadToken}',
         'Accept': 'application/json',
       },
+      queryParameters: {'include_adult': false},
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 15),
     ));
   }
 
-  List<Movie> _clean(List<Movie> movies) =>
-      movies.where((m) => m.isVisible).toList();
+  // Genre IDs to always exclude (10749 = Romance used for AV, 27 = Horror borderline,
+  // but most importantly we block the known AV-genre combos via vote threshold)
+  static const _blockedGenres = <int>{};
+
+  // Common AV title patterns (case-insensitive)
+  static final _avPattern = RegExp(
+    r'\b(uncensored|jav|av idol|gravure|hentai|xxx|porn|adult video)\b',
+    caseSensitive: false,
+  );
+
+  bool _isSafe(Movie m) {
+    if (!m.isVisible) return false;
+    // Require a minimum number of votes — AV films on TMDB almost always
+    // have 0-2 votes since real audiences don't rate them there.
+    if (m.voteCount < 5) return false;
+    // Block if the title matches known AV keywords
+    if (_avPattern.hasMatch(m.title)) return false;
+    if (m.originalTitle != null && _avPattern.hasMatch(m.originalTitle!)) return false;
+    // Block by genre if needed
+    if (m.genreIds.any(_blockedGenres.contains)) return false;
+    return true;
+  }
+
+  List<Movie> _clean(List<Movie> movies) => movies.where(_isSafe).toList();
 
   Future<List<Movie>> getTrending({String timeWindow = 'week'}) async {
     final resp = await _dio.get('/trending/movie/$timeWindow');
@@ -50,7 +73,15 @@ class TmdbService {
   Future<List<Movie>> getUpcoming({int page = 1}) async {
     final resp = await _dio.get('/movie/upcoming', queryParameters: {'page': page});
     final results = resp.data['results'] as List<dynamic>;
-    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
+    // Upcoming films may have 0 votes legitimately — use a lighter filter
+    return results
+        .map((e) => Movie.fromJson(e as Map<String, dynamic>))
+        .where((m) =>
+            !m.adult &&
+            m.hasPoster &&
+            m.title.trim().isNotEmpty &&
+            !_avPattern.hasMatch(m.title))
+        .toList();
   }
 
   Future<List<Movie>> searchMovies(String query, {int page = 1}) async {
@@ -147,6 +178,30 @@ class TmdbService {
     return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList());
   }
 
+  // ── Videos (trailers & teasers) ───────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getMovieVideos(int movieId) async {
+    final resp = await _dio.get('/movie/$movieId/videos');
+    final results = resp.data['results'] as List<dynamic>;
+    return results
+        .cast<Map<String, dynamic>>()
+        .where((v) =>
+            v['site'] == 'YouTube' &&
+            (v['type'] == 'Trailer' || v['type'] == 'Teaser'))
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getTvVideos(int tvId) async {
+    final resp = await _dio.get('/tv/$tvId/videos');
+    final results = resp.data['results'] as List<dynamic>;
+    return results
+        .cast<Map<String, dynamic>>()
+        .where((v) =>
+            v['site'] == 'YouTube' &&
+            (v['type'] == 'Trailer' || v['type'] == 'Teaser'))
+        .toList();
+  }
+
   // ── Multi-search (movies + TV) ─────────────────────────────────────────────
 
   Future<List<Movie>> searchMulti(String query, {int page = 1}) async {
@@ -194,6 +249,10 @@ class TmdbService {
         return getTopRatedTv(page: page);
       case 'airing_today':
         return getAiringToday(page: page);
+      case 'trending_movies':
+        return getTrending();
+      case 'trending_tv':
+        return getTrendingTv();
       default:
         return [];
     }

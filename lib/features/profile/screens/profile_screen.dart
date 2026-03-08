@@ -328,6 +328,20 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   void _showCoverPicker(BuildContext context, WidgetRef ref) {
+    if (!ref.read(isSignedInProvider)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Sign in to set a profile cover',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

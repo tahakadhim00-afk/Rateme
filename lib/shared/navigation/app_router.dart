@@ -8,6 +8,7 @@ import '../../features/tv_detail/screens/tv_detail_screen.dart';
 import '../../features/tv_detail/screens/tv_season_screen.dart';
 import '../../features/actor/screens/actor_profile_screen.dart';
 import '../../features/auth/screens/sign_in_screen.dart';
+import '../../features/home/screens/see_all_screen.dart';
 import '../../core/services/supabase_service.dart';
 import 'main_scaffold.dart';
 
@@ -77,6 +78,15 @@ final appRouter = GoRouter(
       builder: (ctx, state) {
         final id = int.parse(state.pathParameters['id']!);
         return ActorProfileScreen(actorId: id);
+      },
+    ),
+    GoRoute(
+      path: '/see-all',
+      builder: (ctx, state) {
+        final category = state.uri.queryParameters['category']!;
+        final title = state.uri.queryParameters['title']!;
+        final mediaType = state.uri.queryParameters['mediaType'] ?? 'movie';
+        return SeeAllScreen(category: category, title: title, mediaType: mediaType);
       },
     ),
   ],

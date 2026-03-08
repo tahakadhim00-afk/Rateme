@@ -10,9 +10,6 @@ import '../../../core/theme/app_theme.dart';
 import '../widgets/featured_banner.dart';
 import '../widgets/movie_row.dart';
 
-// (category key, page, display title, cardWidth, cardHeight)
-typedef _SectionConfig = (String, int, String, double, double);
-
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -22,45 +19,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _scrollController = ScrollController();
-  int _visibleExtra = 0;
-  bool _loadingMore = false;
-
-  // Sequence of extra sections loaded on scroll (pages 2, 3, 4, 5…)
-  static const List<_SectionConfig> _queue = [
-    ('popular_movies', 2, 'Popular Movies', 120.0, 178.0),
-    ('top_rated_movies', 2, 'Top Rated', 130.0, 195.0),
-    ('popular_tv', 2, 'Popular TV Shows', 120.0, 178.0),
-    ('top_rated_tv', 2, 'Top Rated TV', 130.0, 195.0),
-    ('now_playing', 2, 'Now Playing', 130.0, 195.0),
-    ('airing_today', 2, 'Airing Today', 130.0, 195.0),
-    ('upcoming', 2, 'Upcoming', 140.0, 210.0),
-    ('popular_movies', 3, 'Popular Movies', 120.0, 178.0),
-    ('top_rated_movies', 3, 'Top Rated', 130.0, 195.0),
-    ('popular_tv', 3, 'Popular TV Shows', 120.0, 178.0),
-    ('top_rated_tv', 3, 'Top Rated TV', 130.0, 195.0),
-    ('now_playing', 3, 'Now Playing', 130.0, 195.0),
-    ('airing_today', 3, 'Airing Today', 130.0, 195.0),
-    ('popular_movies', 4, 'Popular Movies', 120.0, 178.0),
-    ('top_rated_movies', 4, 'Top Rated', 130.0, 195.0),
-    ('popular_tv', 4, 'Popular TV Shows', 120.0, 178.0),
-    ('top_rated_tv', 4, 'Top Rated TV', 130.0, 195.0),
-    ('popular_movies', 5, 'Popular Movies', 120.0, 178.0),
-    ('top_rated_movies', 5, 'Top Rated', 130.0, 195.0),
-    ('popular_tv', 5, 'Popular TV Shows', 120.0, 178.0),
-    ('top_rated_tv', 5, 'Top Rated TV', 130.0, 195.0),
-    ('airing_today', 4, 'Airing Today', 130.0, 195.0),
-    ('upcoming', 3, 'Upcoming', 140.0, 210.0),
-    ('popular_movies', 6, 'Popular Movies', 120.0, 178.0),
-    ('top_rated_movies', 6, 'Top Rated', 130.0, 195.0),
-    ('popular_tv', 6, 'Popular TV Shows', 120.0, 178.0),
-    ('top_rated_tv', 6, 'Top Rated TV', 130.0, 195.0),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
 
   @override
   void dispose() {
@@ -68,18 +26,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_loadingMore || _visibleExtra >= _queue.length) return;
-    final pos = _scrollController.position;
-    if (pos.pixels >= pos.maxScrollExtent - 500) {
-      setState(() {
-        _loadingMore = true;
-        _visibleExtra = (_visibleExtra + 3).clamp(0, _queue.length);
-      });
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) setState(() => _loadingMore = false);
-      });
-    }
+  Future<void> _refresh() async {
+    ref.invalidate(trendingMoviesProvider);
+    ref.invalidate(nowPlayingProvider);
+    ref.invalidate(popularMoviesProvider);
+    ref.invalidate(topRatedProvider);
+    ref.invalidate(upcomingProvider);
+    ref.invalidate(trendingTvProvider);
+    ref.invalidate(airingTodayProvider);
+    ref.invalidate(popularTvProvider);
+    ref.invalidate(topRatedTvProvider);
+    await ref.read(trendingMoviesProvider.future).catchError((_) => <Movie>[]);
   }
 
   @override
@@ -94,13 +51,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final airingToday = ref.watch(airingTodayProvider);
     final popularTv = ref.watch(popularTvProvider);
     final topRatedTv = ref.watch(topRatedTvProvider);
-
-    // Dynamic extra sections — watch exactly as many as visible
-    final extraData = <AsyncValue<List<Movie>>>[];
-    for (int i = 0; i < _visibleExtra; i++) {
-      final (cat, page, _, _, _) = _queue[i];
-      extraData.add(ref.watch(paginatedSectionProvider((cat, page))));
-    }
 
     final notifCount = ref.watch(unreadNotifCountProvider);
 
@@ -127,6 +77,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: 'Now Playing',
             movies: movies,
             actionLabel: 'See All',
+            onActionTap: () => context.push('/see-all?category=now_playing&title=Now+Playing&mediaType=movie'),
             onMovieTap: (m) => context.push('/movie/${m.id}'),
           ),
           loading: () => const MovieRow(title: 'Now Playing', isLoading: true),
@@ -141,6 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: 'Popular Movies',
             movies: movies,
             actionLabel: 'See All',
+            onActionTap: () => context.push('/see-all?category=popular_movies&title=Popular+Movies&mediaType=movie'),
             onMovieTap: (m) => context.push('/movie/${m.id}'),
             cardWidth: 120,
             cardHeight: 178,
@@ -161,6 +113,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: 'Top Rated',
             movies: movies,
             actionLabel: 'See All',
+            onActionTap: () => context.push('/see-all?category=top_rated_movies&title=Top+Rated&mediaType=movie'),
             onMovieTap: (m) => context.push('/movie/${m.id}'),
           ),
           loading: () => const MovieRow(title: 'Top Rated', isLoading: true),
@@ -175,6 +128,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: 'Upcoming',
             movies: movies,
             actionLabel: 'See All',
+            onActionTap: () => context.push('/see-all?category=upcoming&title=Upcoming&mediaType=movie'),
             onMovieTap: (m) => context.push('/movie/${m.id}'),
             cardWidth: 140,
             cardHeight: 210,
@@ -195,6 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: 'Trending TV Shows',
             movies: movies,
             actionLabel: 'See All',
+            onActionTap: () => context.push('/see-all?category=trending_tv&title=Trending+TV+Shows&mediaType=tv'),
             onMovieTap: (m) => context.push('/tv/${m.id}'),
           ),
           loading: () =>
@@ -210,6 +165,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: 'Airing Today',
             movies: movies,
             actionLabel: 'See All',
+            onActionTap: () => context.push('/see-all?category=airing_today&title=Airing+Today&mediaType=tv'),
             onMovieTap: (m) => context.push('/tv/${m.id}'),
             cardWidth: 140,
             cardHeight: 210,
@@ -230,6 +186,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: 'Popular TV Shows',
             movies: movies,
             actionLabel: 'See All',
+            onActionTap: () => context.push('/see-all?category=popular_tv&title=Popular+TV+Shows&mediaType=tv'),
             onMovieTap: (m) => context.push('/tv/${m.id}'),
             cardWidth: 120,
             cardHeight: 178,
@@ -250,6 +207,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: 'Top Rated TV Shows',
             movies: movies,
             actionLabel: 'See All',
+            onActionTap: () => context.push('/see-all?category=top_rated_tv&title=Top+Rated+TV+Shows&mediaType=tv'),
             onMovieTap: (m) => context.push('/tv/${m.id}'),
           ),
           loading: () =>
@@ -258,57 +216,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
 
-      // ── Infinite-scroll extra sections ────────────────────────────────────
-
-      for (int i = 0; i < _visibleExtra; i++) ...[
-        const SliverToBoxAdapter(child: SizedBox(height: 30)),
-        SliverToBoxAdapter(
-          child: extraData[i].when(
-            data: (movies) {
-              final cfg = _queue[i];
-              return MovieRow(
-                title: cfg.$3,
-                movies: movies,
-                onMovieTap: (m) => context.push(
-                    m.mediaType == 'tv' ? '/tv/${m.id}' : '/movie/${m.id}'),
-                cardWidth: cfg.$4,
-                cardHeight: cfg.$5,
-              );
-            },
-            loading: () {
-              final cfg = _queue[i];
-              return MovieRow(
-                  title: cfg.$3,
-                  isLoading: true,
-                  cardWidth: cfg.$4,
-                  cardHeight: cfg.$5);
-            },
-            error: (e, _) => const SizedBox.shrink(),
-          ),
-        ),
-      ],
-
-      // Loading indicator while fetching the next batch
-      if (_loadingMore)
-        const SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-                strokeWidth: 2,
-              ),
-            ),
-          ),
-        ),
-
       const SliverToBoxAdapter(child: SizedBox(height: 40)),
     ];
 
     return Scaffold(
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: slivers,
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        color: AppColors.primary,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: slivers,
+        ),
       ),
     );
   }
