@@ -31,14 +31,14 @@ class _FeaturedBannerState extends State<FeaturedBanner> {
 
   void _startTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
       if (!mounted) return;
       final movies = widget.movies.take(5).toList();
       final next = (_current + 1) % movies.length;
       _controller.animateToPage(
         next,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.easeInOutCubic,
       );
     });
   }
@@ -53,8 +53,10 @@ class _FeaturedBannerState extends State<FeaturedBanner> {
   @override
   Widget build(BuildContext context) {
     final movies = widget.movies.take(5).toList();
+    if (movies.isEmpty) return const SizedBox.shrink();
+
     return SizedBox(
-      height: 440,
+      height: 480,
       child: Stack(
         children: [
           PageView.builder(
@@ -62,30 +64,37 @@ class _FeaturedBannerState extends State<FeaturedBanner> {
             itemCount: movies.length,
             onPageChanged: (i) {
               setState(() => _current = i);
-              _startTimer(); // reset timer on manual swipe
+              _startTimer();
             },
             itemBuilder: (ctx, i) => _BannerPage(movie: movies[i]),
           ),
+          
+          // Cinematic Indicators
           Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
+            bottom: 30,
+            left: 20,
+            right: 20,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
                 movies.length,
                 (i) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: _current == i ? 20 : 6,
-                  height: 6,
+                  duration: const Duration(milliseconds: 400),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: _current == i ? 28 : 8,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: _current == i
                         ? AppColors.primary
-                        : AppThemeColors.of(context)
-                            .textMuted
-                            .withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(3),
+                        : Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: _current == i ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      )
+                    ] : null,
                   ),
                 ),
               ),
@@ -104,226 +113,236 @@ class _BannerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppThemeColors.of(context).background;
+
     return GestureDetector(
       onTap: () => context.push('/movie/${movie.id}'),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Backdrop
+          // Backdrop with slight zoom effect potential (via PageView transitions if added)
           if (movie.hasBackdrop)
             CachedNetworkImage(
-              imageUrl: AppConstants.backdropUrl(movie.backdropPath!),
+              imageUrl: AppConstants.backdropUrl(movie.backdropPath!, size: AppConstants.backdropOriginal),
               fit: BoxFit.cover,
-              errorWidget: (_, e, s) =>
-                  Container(color: AppThemeColors.of(context).surface),
+              errorWidget: (_, e, s) => Container(color: bg),
             )
           else
-            Container(color: AppThemeColors.of(context).surface),
+            Container(color: bg),
 
-          // Gradient overlay
-          Builder(builder: (context) {
-            final bg = AppThemeColors.of(context).background;
-            return Container(
+          // Cinematic Overlay Gradients
+          // 1. Top-down subtle shadow for status bar / app bar area
+          Positioned.fill(
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Colors.transparent,
-                    bg.withValues(alpha: 0.3),
-                    bg.withValues(alpha: 0.75),
-                  ],
                   begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.2, 0.55, 1.0],
+                  end: Alignment.center,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.6),
+                    Colors.transparent,
+                  ],
                 ),
               ),
-            );
-          }),
+            ),
+          ),
+          
+          // 2. Bottom-up heavy shadow for text legibility
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    bg.withValues(alpha: 0.4),
+                    bg.withValues(alpha: 0.95),
+                    bg,
+                  ],
+                  stops: const [0.0, 0.4, 0.6, 0.85, 1.0],
+                ),
+              ),
+            ),
+          ),
 
-          // Blurred info box — full-width, anchored at bottom, poster + info
+          // Info Content
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    border: Border(
-                      top: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        width: 0.8,
+            left: 24,
+            right: 24,
+            bottom: 60,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Glassmorphism Trending Tag
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.trending_up_rounded, color: AppColors.primary, size: 14),
+                          const SizedBox(width: 6),
+                          Text(
+                            'TRENDING NOW',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Poster
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: movie.hasPoster
-                            ? CachedNetworkImage(
-                                imageUrl: AppConstants.posterUrl(
-                                    movie.posterPath!,
-                                    size: AppConstants.posterW342),
-                                width: 78,
-                                height: 116,
-                                fit: BoxFit.cover,
-                                errorWidget: (_, e, s) => _buildPosterFallback(),
-                              )
-                            : _buildPosterFallback(),
-                      ),
-                      const SizedBox(width: 14),
-                      // Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.25),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.5)),
-                              ),
-                              child: const Text(
-                                'TRENDING',
-                                style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 7),
-                            Text(
-                              movie.title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                height: 1.2,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                RatingBadge(rating: movie.voteAverage),
-                                if (movie.year.isNotEmpty) ...[
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    movie.year,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                _ActionButton(
-                                  icon: Icons.play_arrow_rounded,
-                                  label: 'Trailer',
-                                  primary: true,
-                                  onTap: () =>
-                                      context.push('/movie/${movie.id}'),
-                                ),
-                                const SizedBox(width: 8),
-                                _ActionButton(
-                                  icon: Icons.info_outline_rounded,
-                                  label: 'Details',
-                                  primary: false,
-                                  onTap: () =>
-                                      context.push('/movie/${movie.id}'),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Title - Large & Impactful
+                Text(
+                  movie.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                    letterSpacing: -0.5,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black45,
+                        offset: Offset(0, 2),
+                        blurRadius: 10,
                       ),
                     ],
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+                const SizedBox(height: 12),
+                
+                // Metadata Row
+                Row(
+                  children: [
+                    RatingBadge(rating: movie.voteAverage, fontSize: 13, iconSize: 15),
+                    if (movie.year.isNotEmpty) ...[
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: const BoxDecoration(
+                          color: Colors.white38,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        movie.year,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                // Premium Action Buttons
+                Row(
+                  children: [
+                    _CinematicButton(
+                      icon: Icons.play_arrow_rounded,
+                      label: 'Watch Trailer',
+                      isPrimary: true,
+                      onTap: () => context.push('/movie/${movie.id}'),
+                    ),
+                    const SizedBox(width: 12),
+                    _CinematicButton(
+                      icon: Icons.info_outline_rounded,
+                      label: 'Details',
+                      isPrimary: false,
+                      onTap: () => context.push('/movie/${movie.id}'),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-
-  Widget _buildPosterFallback() {
-    return Container(
-      width: 78,
-      height: 116,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Icon(Icons.movie_rounded, color: Colors.white54, size: 32),
-    );
-  }
 }
 
-class _ActionButton extends StatelessWidget {
+class _CinematicButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  final bool primary;
+  final bool isPrimary;
   final VoidCallback onTap;
 
-  const _ActionButton({
+  const _CinematicButton({
     required this.icon,
     required this.label,
-    required this.primary,
+    required this.isPrimary,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: primary
-              ? AppColors.primary
-              : Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(10),
-          border: primary
-              ? null
-              : Border.all(
-                  color: Colors.white.withValues(alpha: 0.25), width: 0.8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                size: 18,
-                color: primary ? Colors.black : Colors.white),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: primary ? Colors.black : Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: isPrimary ? AppColors.primary : Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: isPrimary ? [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              )
+            ] : null,
+            border: isPrimary ? null : Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1,
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isPrimary ? Colors.black : Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isPrimary ? Colors.black : Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -6,11 +6,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/movie_detail.dart';
 import '../../../core/models/movie.dart';
 import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/providers/lists_provider.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/models/user_list_item.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/rating_badge.dart';
@@ -282,6 +284,148 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                         ),
                 ),
 
+                // Trailers
+                ref.watch(movieVideosProvider(movie.id)).when(
+                  data: (videos) => videos.isEmpty
+                      ? const SizedBox.shrink()
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSection(
+                              context,
+                              title: 'Trailers',
+                              child: SizedBox(
+                                height: 180,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  itemCount: videos.length,
+                                  itemBuilder: (ctx, i) {
+                                    final video = videos[i];
+                                    final key = video['key'] as String;
+                                    final name = video['name'] as String? ?? 'Trailer';
+                                    final type = video['type'] as String? ?? '';
+                                    final thumbUrl =
+                                        'https://img.youtube.com/vi/$key/hqdefault.jpg';
+                                    return Padding(
+                                      padding: EdgeInsets.only(
+                                          right: i < videos.length - 1 ? 14 : 0),
+                                      child: GestureDetector(
+                                        onTap: () async {
+                                          final uri = Uri.parse(
+                                              'https://www.youtube.com/watch?v=$key');
+                                          if (await canLaunchUrl(uri)) {
+                                            launchUrl(uri,
+                                                mode: LaunchMode.externalApplication);
+                                          }
+                                        },
+                                        child: SizedBox(
+                                          width: 280,
+                                          child: Stack(
+                                            fit: StackFit.expand,
+                                            children: [
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                                child: CachedNetworkImage(
+                                                  imageUrl: thumbUrl,
+                                                  fit: BoxFit.cover,
+                                                  placeholder: (_, _) => Container(
+                                                    color: AppThemeColors.of(context)
+                                                        .surfaceVariant,
+                                                  ),
+                                                  errorWidget: (ctx, e, _) =>
+                                                      Container(
+                                                    color: AppThemeColors.of(ctx)
+                                                        .surfaceVariant,
+                                                  ),
+                                                ),
+                                              ),
+                                              // Dark overlay
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                                child: Container(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.35),
+                                                ),
+                                              ),
+                                              // Play button
+                                              Center(
+                                                child: Container(
+                                                  width: 52,
+                                                  height: 52,
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.primary,
+                                                    shape: BoxShape.circle,
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: AppColors.primary
+                                                            .withValues(alpha: 0.5),
+                                                        blurRadius: 16,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.play_arrow_rounded,
+                                                    color: Colors.black,
+                                                    size: 30,
+                                                  ),
+                                                ),
+                                              ),
+                                              // Label
+                                              Positioned(
+                                                left: 12,
+                                                right: 12,
+                                                bottom: 12,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      name,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 13,
+                                                        fontWeight: FontWeight.w700,
+                                                        shadows: [
+                                                          Shadow(
+                                                              color: Colors.black,
+                                                              blurRadius: 8)
+                                                        ],
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    if (type.isNotEmpty)
+                                                      Text(
+                                                        type,
+                                                        style: TextStyle(
+                                                          color: Colors.white
+                                                              .withValues(alpha: 0.7),
+                                                          fontSize: 11,
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, e) => const SizedBox.shrink(),
+                ),
+
                 // Recommendations
                 recommendations.when(
                   data: (movies) => movies.isEmpty
@@ -370,7 +514,13 @@ class _DetailViewState extends ConsumerState<_DetailView> {
       ),
       actions: [
         GestureDetector(
-          onTap: () => listNotifier.toggleWatchLater(movieAsMovie),
+          onTap: () {
+            if (!ref.read(isSignedInProvider)) {
+              _requireSignIn(context);
+              return;
+            }
+            listNotifier.toggleWatchLater(movieAsMovie);
+          },
           child: Container(
             margin: const EdgeInsets.all(8),
             padding: const EdgeInsets.all(8),
@@ -517,9 +667,15 @@ class _DetailViewState extends ConsumerState<_DetailView> {
             label: 'Watched',
             active: isWatched,
             activeColor: AppColors.success,
-            onTap: () => listNotifier.toggleWatched(movieAsMovie,
-                runtime: movie.runtime,
-                genreIds: movie.genres.map((g) => g.id).toList()),
+            onTap: () {
+              if (!ref.read(isSignedInProvider)) {
+                _requireSignIn(context);
+                return;
+              }
+              listNotifier.toggleWatched(movieAsMovie,
+                  runtime: movie.runtime,
+                  genreIds: movie.genres.map((g) => g.id).toList());
+            },
           ),
           const SizedBox(width: 12),
           _RoundActionBtn(
@@ -529,7 +685,13 @@ class _DetailViewState extends ConsumerState<_DetailView> {
             label: 'Watch Later',
             active: isWatchLater,
             activeColor: AppColors.primary,
-            onTap: () => listNotifier.toggleWatchLater(movieAsMovie),
+            onTap: () {
+              if (!ref.read(isSignedInProvider)) {
+                _requireSignIn(context);
+                return;
+              }
+              listNotifier.toggleWatchLater(movieAsMovie);
+            },
           ),
         ],
       ),
@@ -566,6 +728,10 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                 color: AppColors.primary,
               ),
               onRatingUpdate: (r) {
+                if (!ref.read(isSignedInProvider)) {
+                  _requireSignIn(context);
+                  return;
+                }
                 setState(() => _userRating = r);
                 final isWatched = (ref.read(listsProvider)[ListType.watched] ?? [])
                     .any((e) => e.mediaId == movie.id);
@@ -607,6 +773,20 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         const SizedBox(height: 12),
         child,
       ],
+    );
+  }
+
+  void _requireSignIn(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Sign in to add films to your lists',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
     );
   }
 
