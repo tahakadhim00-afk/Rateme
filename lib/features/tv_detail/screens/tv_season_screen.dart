@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/tv_detail.dart';
 import '../../../core/providers/tmdb_providers.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../movie_detail/widgets/share_rating_sheet.dart';
 
 class TvSeasonScreen extends ConsumerWidget {
   final int tvId;
@@ -65,7 +68,10 @@ class _SeasonView extends StatelessWidget {
         SliverToBoxAdapter(child: _buildSeasonHeader(context)),
         SliverList(
           delegate: SliverChildBuilderDelegate(
-            (ctx, i) => _EpisodeTile(episode: season.episodes[i]),
+            (ctx, i) => _EpisodeTile(
+              episode: season.episodes[i],
+              showTitle: showTitle,
+            ),
             childCount: season.episodes.length,
           ),
         ),
@@ -194,13 +200,70 @@ class _SeasonView extends StatelessWidget {
 
 // ── Episode Tile ──────────────────────────────────────────────────────────────
 
-class _EpisodeTile extends StatelessWidget {
+class _EpisodeTile extends ConsumerStatefulWidget {
   final Episode episode;
-  const _EpisodeTile({required this.episode});
+  final String showTitle;
+
+  const _EpisodeTile({
+    required this.episode,
+    required this.showTitle,
+  });
+
+  @override
+  ConsumerState<_EpisodeTile> createState() => _EpisodeTileState();
+}
+
+class _EpisodeTileState extends ConsumerState<_EpisodeTile> {
+  double _userRating = 0;
+
+  void _requireSignIn() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Sign in to rate and share',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showShareSheet() {
+    if (!ref.read(isSignedInProvider)) {
+      _requireSignIn();
+      return;
+    }
+    final user = ref.read(currentUserProvider);
+    final username = (user?.userMetadata?['full_name'] as String?) ??
+        user?.email?.split('@').first;
+    final episode = widget.episode;
+    final posterUrl = episode.hasStill
+        ? AppConstants.posterUrl(episode.stillPath!, size: '/w500')
+        : null;
+    final episodeTitle =
+        'S${episode.episodeNumber.toString().padLeft(2, '0')} · ${episode.name}';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ShareRatingSheet(
+        title: episodeTitle,
+        year: episode.year,
+        posterUrl: posterUrl,
+        rating: _userRating,
+        username: username,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = AppThemeColors.of(context);
+    final episode = widget.episode;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Container(
@@ -323,6 +386,64 @@ class _EpisodeTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+
+            // ── Rating section ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  RatingBar.builder(
+                    initialRating: _userRating,
+                    minRating: 0.5,
+                    direction: Axis.horizontal,
+                    allowHalfRating: true,
+                    itemCount: 5,
+                    itemSize: 26,
+                    itemPadding:
+                        const EdgeInsets.symmetric(horizontal: 2),
+                    itemBuilder: (ctx, _) => const Icon(
+                      Icons.star_rounded,
+                      color: AppColors.primary,
+                    ),
+                    onRatingUpdate: (r) {
+                      if (!ref.read(isSignedInProvider)) {
+                        _requireSignIn();
+                        return;
+                      }
+                      setState(() => _userRating = r);
+                    },
+                  ),
+                  if (_userRating > 0) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _showShareSheet,
+                        icon: const Icon(Icons.ios_share_rounded, size: 15),
+                        label: const Text('Share Rating'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(
+                              color: AppColors.primary, width: 1),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),

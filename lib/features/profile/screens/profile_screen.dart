@@ -14,6 +14,7 @@ import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/models/user_list_item.dart';
 import '../../../core/models/genre.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/google_sign_in_button.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -23,6 +24,7 @@ class ProfileScreen extends ConsumerWidget {
     final watched = ref.watch(watchedProvider);
     final watchLater = ref.watch(watchLaterProvider);
     final isLoading = ref.watch(listsLoadingProvider);
+    final authState = ref.watch(authNotifierProvider);
     final User? user = ref.watch(currentUserProvider);
     final isSignedIn = user != null;
     final coverUrl = ref.watch(coverProvider);
@@ -45,83 +47,136 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.background,
-      body: CustomScrollView(
-        slivers: [
-          // ── Cinematic Header ───────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: _buildHeader(
-              context: context,
-              ref: ref,
-              coverUrl: coverUrl,
-              avatarUrl: avatarUrl,
-              displayName: displayName,
-              email: email,
-              isSignedIn: isSignedIn,
-              colors: colors,
-            ),
-          ),
+      body: isSignedIn
+          ? CustomScrollView(
+              slivers: [
+                // ── Cinematic Header ─────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: _buildHeader(
+                    context: context,
+                    ref: ref,
+                    coverUrl: coverUrl,
+                    avatarUrl: avatarUrl,
+                    displayName: displayName,
+                    email: email,
+                    isSignedIn: isSignedIn,
+                    authLoading: authState.isLoading,
+                    colors: colors,
+                  ),
+                ),
 
-          // ── Stats ──────────────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-              child: isLoading
-                  ? _shimmerBox(context, 90)
-                  : _buildStatsRow(
-                      context,
-                      watched.length,
-                      watchLater.length,
-                      avgRating,
+                // ── Stats ────────────────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                    child: isLoading
+                        ? _shimmerBox(context, 90)
+                        : _buildStatsRow(
+                            context,
+                            watched.length,
+                            watchLater.length,
+                            avgRating,
+                          ),
+                  ),
+                ),
+
+                // ── Media Split ───────────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                    child: isLoading
+                        ? _shimmerBox(context, 110)
+                        : _buildMediaSplit(context, movies, tvShows),
+                  ),
+                ),
+
+                // ── Genre Chart ───────────────────────────────────────────────
+                if (!isLoading && watched.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                      child: _buildGenreChart(context, watched),
                     ),
-            ),
-          ),
+                  ),
 
-          // ── Media Split ────────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: isLoading
-                  ? _shimmerBox(context, 110)
-                  : _buildMediaSplit(context, movies, tvShows),
-            ),
-          ),
+                if (isLoading)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                      child: _shimmerBox(context, 200),
+                    ),
+                  ),
 
-          // ── Genre Chart ────────────────────────────────────────────────────
-          if (!isLoading && watched.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: _buildGenreChart(context, watched),
-              ),
-            ),
+                // ── Settings ─────────────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                    child: _buildSettingsCard(
+                      context: context,
+                      ref: ref,
+                      isSignedIn: isSignedIn,
+                    ),
+                  ),
+                ),
 
-          if (isLoading)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: _shimmerBox(context, 200),
-              ),
-            ),
-
-          // ── Settings ───────────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-              child: _buildSettingsCard(
-                context: context,
-                ref: ref,
-                isSignedIn: isSignedIn,
-              ),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 48)),
-        ],
-      ),
+                const SliverToBoxAdapter(child: SizedBox(height: 48)),
+              ],
+            )
+          : _buildGuestView(context, ref, authState.isLoading, colors),
     );
   }
 
   // ── Header ────────────────────────────────────────────────────────────────
+
+  Widget _buildGuestView(
+    BuildContext context,
+    WidgetRef ref,
+    bool loading,
+    AppThemeColors colors,
+  ) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 80),
+            Image.asset(
+              'assets/logo_and_images/app_bar.png',
+              width: 72,
+              height: 72,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Your Profile',
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Sign in to track your watched films, rate shows, and sync your lists across devices.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 14,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 36),
+            GoogleSignInButton(
+              loading: loading,
+              onTap: () =>
+                  ref.read(authNotifierProvider.notifier).signInWithGoogle(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildHeader({
     required BuildContext context,
@@ -131,6 +186,7 @@ class ProfileScreen extends ConsumerWidget {
     required String displayName,
     required String email,
     required bool isSignedIn,
+    required bool authLoading,
     required AppThemeColors colors,
   }) {
     return Column(
@@ -258,19 +314,12 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ],
               if (!isSignedIn) ...[
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () => context.go('/signin'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Sign In',
-                      style: TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w700),
-                    ),
+                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: GoogleSignInButton(
+                    loading: authLoading,
+                    onTap: () => ref.read(authNotifierProvider.notifier).signInWithGoogle(),
                   ),
                 ),
               ],
@@ -307,47 +356,32 @@ class ProfileScreen extends ConsumerWidget {
     int watchLaterCount,
     double? avgRating,
   ) {
-    final colors = AppThemeColors.of(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: BoxDecoration(
-            color: colors.card.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: colors.border.withValues(alpha: 0.5), width: 0.5),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _StatCell(
-                value: watchedCount.toString(),
-                label: 'Watched',
-                icon: Icons.check_circle_rounded,
-                color: AppColors.success,
-              ),
-              _VerticalDivider(colors: colors),
-              _StatCell(
-                value: watchLaterCount.toString(),
-                label: 'Watch Later',
-                icon: Icons.bookmark_rounded,
-                color: AppColors.primary,
-              ),
-              if (avgRating != null) ...[
-                _VerticalDivider(colors: colors),
-                _StatCell(
-                  value: avgRating.toStringAsFixed(1),
-                  label: 'Avg Rating',
-                  icon: Icons.star_rounded,
-                  color: AppColors.primary,
-                ),
-              ],
-            ],
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            value: watchedCount.toString(),
+            label: 'Watched',
+            icon: Icons.check_circle_rounded,
           ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _StatCard(
+            value: watchLaterCount.toString(),
+            label: 'Watch Later',
+            icon: Icons.bookmark_rounded,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _StatCard(
+            value: avgRating != null ? avgRating.toStringAsFixed(1) : '—',
+            label: 'Avg Rating',
+            icon: Icons.star_rounded,
+          ),
+        ),
+      ],
     );
   }
 
@@ -379,7 +413,7 @@ class ProfileScreen extends ConsumerWidget {
             label: 'Films',
             count: movies.length,
             timeLabel: fmtTime(minutesFor(movies)),
-            color: const Color(0xFF7C6FFF),
+            color: const Color(0xFF444444),
           ),
         ),
         const SizedBox(width: 12),
@@ -389,7 +423,7 @@ class ProfileScreen extends ConsumerWidget {
             label: 'TV Shows',
             count: tvShows.length,
             timeLabel: fmtTime(minutesFor(tvShows)),
-            color: const Color(0xFF00C9A7),
+            color: const Color(0xFF444444),
           ),
         ),
       ],
@@ -591,56 +625,54 @@ class ProfileScreen extends ConsumerWidget {
 
 // ── Supporting widgets ────────────────────────────────────────────────────────
 
-class _StatCell extends StatelessWidget {
+class _StatCard extends StatelessWidget {
   final String value;
   final String label;
   final IconData icon;
-  final Color color;
 
-  const _StatCell({
+  const _StatCard({
     required this.value,
     required this.label,
     required this.icon,
-    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
+    final colors = AppThemeColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
+      decoration: BoxDecoration(
+        border: Border.all(color: colors.border, width: 0.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
           ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppThemeColors.of(context).textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
-}
-
-class _VerticalDivider extends StatelessWidget {
-  final AppThemeColors colors;
-  const _VerticalDivider({required this.colors});
-
-  @override
-  Widget build(BuildContext context) =>
-      Container(width: 0.5, height: 52, color: colors.border);
 }
 
 class _MediaCard extends StatelessWidget {

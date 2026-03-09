@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Dark cinema background palette
-  static const Color background = Color(0xFF0A0A0F);
-  static const Color surface = Color(0xFF12121A);
-  static const Color surfaceVariant = Color(0xFF1C1C28);
-  static const Color card = Color(0xFF1A1A24);
+  static const Color background = Color(0xFF000000);
+  static const Color surface = Color(0xFF000000);
+  static const Color surfaceVariant = Color(0xFF000000);
+  static const Color card = Color(0xFF000000);
 
   // Accent — golden cinema feel
   static const Color primary = Color(0xFFFEC720);
@@ -17,13 +16,13 @@ class AppColors {
   static const Color secondary = Color(0xFFE63946);
 
   // Text
-  static const Color textPrimary = Color(0xFFF0F0F5);
-  static const Color textSecondary = Color(0xFF9A9AB0);
-  static const Color textMuted = Color(0xFF5A5A72);
+  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFF9E9E9E);
+  static const Color textMuted = Color(0xFF666666);
 
   // Borders & dividers
-  static const Color border = Color(0xFF2A2A3A);
-  static const Color divider = Color(0xFF1E1E2E);
+  static const Color border = Color(0xFF333333);
+  static const Color divider = Color(0xFF222222);
 
   // Status
   static const Color success = Color(0xFF4CAF50);
@@ -38,7 +37,7 @@ class AppColors {
   );
 
   static const LinearGradient backdropGradient = LinearGradient(
-    colors: [Colors.transparent, Color(0xFF0A0A0F)],
+    colors: [Colors.transparent, Color(0xFF000000)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -99,6 +98,8 @@ class AppThemeColors {
   );
 }
 
+const _poppins = 'Poppins';
+
 class AppTheme {
   static ThemeData get lightTheme {
     final base = ThemeData.light();
@@ -113,32 +114,32 @@ class AppTheme {
         onSecondary: Colors.white,
         onSurface: Color(0xFF0D0D17),
       ),
-      textTheme: GoogleFonts.interTextTheme(base.textTheme).copyWith(
-        displayLarge: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.w700, color: const Color(0xFF0D0D17), letterSpacing: -0.5),
-        displayMedium: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w700, color: const Color(0xFF0D0D17), letterSpacing: -0.3),
-        displaySmall: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w600, color: const Color(0xFF0D0D17)),
-        headlineMedium: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFF0D0D17)),
-        headlineSmall: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF0D0D17)),
-        titleLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF0D0D17)),
-        titleMedium: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF0D0D17)),
-        bodyLarge: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: const Color(0xFF0D0D17), height: 1.6),
-        bodyMedium: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: const Color(0xFF5A5A72), height: 1.5),
-        labelLarge: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF0D0D17), letterSpacing: 0.2),
-        labelSmall: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: const Color(0xFF9A9AB0), letterSpacing: 0.5),
+      textTheme: base.textTheme.apply(fontFamily: _poppins).copyWith(
+        displayLarge: const TextStyle(fontFamily: _poppins, fontSize: 32, fontWeight: FontWeight.w700, color: Color(0xFF0D0D17), letterSpacing: -0.5),
+        displayMedium: const TextStyle(fontFamily: _poppins, fontSize: 26, fontWeight: FontWeight.w700, color: Color(0xFF0D0D17), letterSpacing: -0.3),
+        displaySmall: const TextStyle(fontFamily: _poppins, fontSize: 22, fontWeight: FontWeight.w600, color: Color(0xFF0D0D17)),
+        headlineMedium: const TextStyle(fontFamily: _poppins, fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF0D0D17)),
+        headlineSmall: const TextStyle(fontFamily: _poppins, fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0D0D17)),
+        titleLarge: const TextStyle(fontFamily: _poppins, fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0D0D17)),
+        titleMedium: const TextStyle(fontFamily: _poppins, fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF0D0D17)),
+        bodyLarge: const TextStyle(fontFamily: _poppins, fontSize: 15, fontWeight: FontWeight.w400, color: Color(0xFF0D0D17), height: 1.6),
+        bodyMedium: const TextStyle(fontFamily: _poppins, fontSize: 13, fontWeight: FontWeight.w400, color: Color(0xFF5A5A72), height: 1.5),
+        labelLarge: const TextStyle(fontFamily: _poppins, fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0D0D17), letterSpacing: 0.2),
+        labelSmall: const TextStyle(fontFamily: _poppins, fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF9A9AB0), letterSpacing: 0.5),
       ),
-      appBarTheme: AppBarTheme(
-        backgroundColor: const Color(0xFFF2F2F7),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFF2F2F7),
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF0D0D17)),
-        iconTheme: const IconThemeData(color: Color(0xFF0D0D17)),
+        titleTextStyle: TextStyle(fontFamily: _poppins, fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF0D0D17)),
+        iconTheme: IconThemeData(color: Color(0xFF0D0D17)),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
         indicatorColor: AppColors.primary.withValues(alpha: 0.15),
         labelTextStyle: WidgetStateProperty.all(
-          GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+          const TextStyle(fontFamily: _poppins, fontSize: 12, fontWeight: FontWeight.w500),
         ),
       ),
       cardTheme: CardThemeData(
@@ -157,7 +158,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: const Color(0xFFEAEAF0),
-        hintStyle: GoogleFonts.inter(color: const Color(0xFF9A9AB0), fontSize: 14),
+        hintStyle: const TextStyle(fontFamily: _poppins, color: Color(0xFF9A9AB0), fontSize: 14),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -188,79 +189,25 @@ class AppTheme {
         onSecondary: Colors.white,
         onSurface: AppColors.textPrimary,
       ),
-      textTheme: GoogleFonts.interTextTheme(base.textTheme).copyWith(
-        displayLarge: GoogleFonts.inter(
-          fontSize: 32,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
-          letterSpacing: -0.5,
-        ),
-        displayMedium: GoogleFonts.inter(
-          fontSize: 26,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
-          letterSpacing: -0.3,
-        ),
-        displaySmall: GoogleFonts.inter(
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-        headlineMedium: GoogleFonts.inter(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-        headlineSmall: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-        titleLarge: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-        titleMedium: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-        ),
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textPrimary,
-          height: 1.6,
-        ),
-        bodyMedium: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textSecondary,
-          height: 1.5,
-        ),
-        labelLarge: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-          letterSpacing: 0.2,
-        ),
-        labelSmall: GoogleFonts.inter(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textMuted,
-          letterSpacing: 0.5,
-        ),
+      textTheme: base.textTheme.apply(fontFamily: _poppins).copyWith(
+        displayLarge: const TextStyle(fontFamily: _poppins, fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.5),
+        displayMedium: const TextStyle(fontFamily: _poppins, fontSize: 26, fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.3),
+        displaySmall: const TextStyle(fontFamily: _poppins, fontSize: 22, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        headlineMedium: const TextStyle(fontFamily: _poppins, fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        headlineSmall: const TextStyle(fontFamily: _poppins, fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        titleLarge: const TextStyle(fontFamily: _poppins, fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        titleMedium: const TextStyle(fontFamily: _poppins, fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+        bodyLarge: const TextStyle(fontFamily: _poppins, fontSize: 15, fontWeight: FontWeight.w400, color: AppColors.textPrimary, height: 1.6),
+        bodyMedium: const TextStyle(fontFamily: _poppins, fontSize: 13, fontWeight: FontWeight.w400, color: AppColors.textSecondary, height: 1.5),
+        labelLarge: const TextStyle(fontFamily: _poppins, fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary, letterSpacing: 0.2),
+        labelSmall: const TextStyle(fontFamily: _poppins, fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textMuted, letterSpacing: 0.5),
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.inter(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
-        ),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        titleTextStyle: TextStyle(fontFamily: _poppins, fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
@@ -280,10 +227,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceVariant,
-        hintStyle: GoogleFonts.inter(
-          color: AppColors.textMuted,
-          fontSize: 14,
-        ),
+        hintStyle: const TextStyle(fontFamily: _poppins, color: AppColors.textMuted, fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -292,10 +236,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.divider,
@@ -304,7 +245,8 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceVariant,
-        labelStyle: GoogleFonts.inter(
+        labelStyle: const TextStyle(
+          fontFamily: _poppins,
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: AppColors.textSecondary,

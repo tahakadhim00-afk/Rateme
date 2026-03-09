@@ -8,10 +8,12 @@ import '../../../core/models/tv_detail.dart';
 import '../../../core/models/movie.dart';
 import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/providers/lists_provider.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/models/user_list_item.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/rating_badge.dart';
 import '../../../shared/widgets/movie_card.dart';
+import '../../movie_detail/widgets/share_rating_sheet.dart';
 
 class TvDetailScreen extends ConsumerWidget {
   final int tvId;
@@ -53,7 +55,20 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _initUserRating();
     _syncGenreIds();
+  }
+
+  void _initUserRating() {
+    final watched = ref.read(listsProvider)[ListType.watched] ?? [];
+    final item = watched.cast<UserListItem?>().firstWhere(
+      (e) => e!.mediaId == widget.tv.id,
+      orElse: () => null,
+    );
+    final saved = item?.userRating;
+    if (saved != null && saved > 0) {
+      setState(() => _userRating = saved / 2);
+    }
   }
 
   void _syncGenreIds() {
@@ -450,11 +465,17 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
             label: 'Watched',
             active: isWatched,
             activeColor: AppColors.success,
-            onTap: () => listNotifier.toggleWatched(_tvAsMovie,
-                runtime: tv.episodeRunTime.isNotEmpty
-                    ? tv.numberOfEpisodes * tv.episodeRunTime.first
-                    : null,
-                genreIds: tv.genres.map((g) => g.id).toList()),
+            onTap: () {
+              if (!ref.read(isSignedInProvider)) {
+                _requireSignIn(context);
+                return;
+              }
+              listNotifier.toggleWatched(_tvAsMovie,
+                  runtime: tv.episodeRunTime.isNotEmpty
+                      ? tv.numberOfEpisodes * tv.episodeRunTime.first
+                      : null,
+                  genreIds: tv.genres.map((g) => g.id).toList());
+            },
           ),
           const SizedBox(width: 12),
           _RoundActionBtn(
@@ -464,7 +485,13 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
             label: 'Watch Later',
             active: isWatchLater,
             activeColor: AppColors.primary,
-            onTap: () => listNotifier.toggleWatchLater(_tvAsMovie),
+            onTap: () {
+              if (!ref.read(isSignedInProvider)) {
+                _requireSignIn(context);
+                return;
+              }
+              listNotifier.toggleWatchLater(_tvAsMovie);
+            },
           ),
         ],
       ),
@@ -491,6 +518,10 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
               itemBuilder: (ctx, _) =>
                   const Icon(Icons.star_rounded, color: AppColors.primary),
               onRatingUpdate: (r) {
+                if (!ref.read(isSignedInProvider)) {
+                  _requireSignIn(context);
+                  return;
+                }
                 setState(() => _userRating = r);
                 final isWatched =
                     (ref.read(listsProvider)[ListType.watched] ?? [])
@@ -513,11 +544,25 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
             if (_userRating > 0) ...[
               const SizedBox(height: 12),
               Text(
-                'Your rating: ${(_userRating * 2).toStringAsFixed(1)} / 10',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
+                'Your rating: ${_userRating == _userRating.roundToDouble() ? _userRating.toInt() : _userRating.toStringAsFixed(1)} / 5',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showShareSheet(context, tv),
+                  icon: const Icon(Icons.ios_share_rounded, size: 16),
+                  label: const Text('Share Rating'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary, width: 1),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                ),
               ),
             ],
           ],
@@ -549,6 +594,47 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  void _showShareSheet(BuildContext context, TvDetail tv) {
+    if (!ref.read(isSignedInProvider)) {
+      _requireSignIn(context);
+      return;
+    }
+    final user = ref.read(currentUserProvider);
+    final username = (user?.userMetadata?['full_name'] as String?) ??
+        user?.email?.split('@').first;
+    final posterUrl = tv.posterPath != null
+        ? AppConstants.posterUrl(tv.posterPath!, size: AppConstants.posterW500)
+        : tv.backdropPath != null
+            ? AppConstants.backdropUrl(tv.backdropPath!)
+            : null;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ShareRatingSheet(
+        title: tv.title,
+        year: tv.year,
+        posterUrl: posterUrl,
+        rating: _userRating,
+        username: username,
+      ),
+    );
+  }
+
+  void _requireSignIn(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Sign in to rate and share',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
       ),
     );
   }
