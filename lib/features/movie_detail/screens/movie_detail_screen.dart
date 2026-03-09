@@ -17,6 +17,7 @@ import '../../../core/models/user_list_item.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/rating_badge.dart';
 import '../../../shared/widgets/movie_card.dart';
+import '../widgets/share_rating_sheet.dart';
 
 class MovieDetailScreen extends ConsumerWidget {
   final int movieId;
@@ -58,7 +59,21 @@ class _DetailViewState extends ConsumerState<_DetailView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _initUserRating();
     _syncGenreIds();
+  }
+
+  void _initUserRating() {
+    final watched = ref.read(listsProvider)[ListType.watched] ?? [];
+    final item = watched.cast<UserListItem?>().firstWhere(
+      (e) => e!.mediaId == widget.movie.id,
+      orElse: () => null,
+    );
+    final saved = item?.userRating;
+    if (saved != null && saved > 0) {
+      // userRating is stored 0–10; RatingBar uses 0–5 half-star scale
+      setState(() => _userRating = saved / 2);
+    }
   }
 
   void _syncGenreIds() {
@@ -314,9 +329,12 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                                         onTap: () async {
                                           final uri = Uri.parse(
                                               'https://www.youtube.com/watch?v=$key');
-                                          if (await canLaunchUrl(uri)) {
-                                            launchUrl(uri,
+                                          try {
+                                            await launchUrl(uri,
                                                 mode: LaunchMode.externalApplication);
+                                          } catch (_) {
+                                            await launchUrl(uri,
+                                                mode: LaunchMode.inAppWebView);
                                           }
                                         },
                                         child: SizedBox(
@@ -565,7 +583,7 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                   colors: [
                     Colors.transparent,
                     Colors.transparent,
-                    Color(0xFF0A0A0F),
+                    Color(0xFF000000),
                   ],
                   stops: [0.0, 0.45, 1.0],
                 ),
@@ -748,11 +766,25 @@ class _DetailViewState extends ConsumerState<_DetailView> {
             if (_userRating > 0) ...[
               const SizedBox(height: 12),
               Text(
-                'Your rating: ${(_userRating * 2).toStringAsFixed(1)} / 10',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
+                'Your rating: ${_userRating == _userRating.roundToDouble() ? _userRating.toInt() : _userRating.toStringAsFixed(1)} / 5',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showShareSheet(context, movie),
+                  icon: const Icon(Icons.ios_share_rounded, size: 16),
+                  label: const Text('Share Rating'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary, width: 1),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                ),
               ),
             ],
           ],
@@ -773,6 +805,33 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         const SizedBox(height: 12),
         child,
       ],
+    );
+  }
+
+  void _showShareSheet(BuildContext context, MovieDetail movie) {
+    if (!ref.read(isSignedInProvider)) {
+      _requireSignIn(context);
+      return;
+    }
+    final user = ref.read(currentUserProvider);
+    final username = (user?.userMetadata?['full_name'] as String?) ??
+        user?.email?.split('@').first;
+    final posterUrl = movie.hasPoster
+        ? AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterW500)
+        : movie.hasBackdrop
+            ? AppConstants.backdropUrl(movie.backdropPath!)
+            : null;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ShareRatingSheet(
+        title: movie.title,
+        year: movie.year,
+        posterUrl: posterUrl,
+        rating: _userRating,
+        username: username,
+      ),
     );
   }
 
