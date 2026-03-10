@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/secrets.dart';
+import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/theme_provider.dart';
 import 'shared/navigation/app_router.dart';
@@ -14,6 +15,8 @@ void main() async {
     url: Secrets.supabaseUrl,
     anonKey: Secrets.supabaseAnonKey,
   );
+
+  await NotificationService.init();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
