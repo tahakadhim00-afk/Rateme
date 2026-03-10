@@ -14,6 +14,7 @@ import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/models/user_list_item.dart';
 import '../../../core/models/genre.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../shared/widgets/google_sign_in_button.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -70,23 +71,15 @@ class ProfileScreen extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                     child: isLoading
-                        ? _shimmerBox(context, 90)
-                        : _buildStatsRow(
+                        ? _shimmerBox(context, 220)
+                        : _buildStatsSection(
                             context,
                             watched.length,
                             watchLater.length,
                             avgRating,
+                            movies,
+                            tvShows,
                           ),
-                  ),
-                ),
-
-                // ── Media Split ───────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                    child: isLoading
-                        ? _shimmerBox(context, 110)
-                        : _buildMediaSplit(context, movies, tvShows),
                   ),
                 ),
 
@@ -111,11 +104,7 @@ class ProfileScreen extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-                    child: _buildSettingsCard(
-                      context: context,
-                      ref: ref,
-                      isSignedIn: isSignedIn,
-                    ),
+                    child: _SettingsCard(isSignedIn: isSignedIn),
                   ),
                 ),
 
@@ -348,50 +337,18 @@ class ProfileScreen extends ConsumerWidget {
         ),
       );
 
-  // ── Stats Row ─────────────────────────────────────────────────────────────
+  // ── Stats Section (unified) ───────────────────────────────────────────────
 
-  Widget _buildStatsRow(
+  Widget _buildStatsSection(
     BuildContext context,
     int watchedCount,
     int watchLaterCount,
     double? avgRating,
-  ) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            value: watchedCount.toString(),
-            label: 'Watched',
-            icon: Icons.check_circle_rounded,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _StatCard(
-            value: watchLaterCount.toString(),
-            label: 'Watch Later',
-            icon: Icons.bookmark_rounded,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _StatCard(
-            value: avgRating != null ? avgRating.toStringAsFixed(1) : '—',
-            label: 'Avg Rating',
-            icon: Icons.star_rounded,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Media Split ───────────────────────────────────────────────────────────
-
-  Widget _buildMediaSplit(
-    BuildContext context,
     List<UserListItem> movies,
     List<UserListItem> tvShows,
   ) {
+    final colors = AppThemeColors.of(context);
+
     int minutesFor(List<UserListItem> items) =>
         items.where((e) => e.runtime != null).fold(0, (s, e) => s + e.runtime!);
 
@@ -405,28 +362,267 @@ class ProfileScreen extends ConsumerWidget {
       return '${m}m';
     }
 
-    return Row(
-      children: [
-        Expanded(
-          child: _MediaCard(
-            icon: Icons.movie_rounded,
-            label: 'Films',
-            count: movies.length,
-            timeLabel: fmtTime(minutesFor(movies)),
-            color: const Color(0xFF444444),
+    final movieMins = minutesFor(movies);
+    final tvMins = minutesFor(tvShows);
+    final totalMins = movieMins + tvMins;
+    final total = movies.length + tvShows.length;
+    final movieRatio = total == 0 ? 0.5 : movies.length / total;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: colors.card.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+                color: colors.border.withValues(alpha: 0.5), width: 0.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.insights_rounded,
+                        size: 16, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Your Statistics',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+
+              // 3 main stats
+              IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _StatItem(
+                        value: watchedCount.toString(),
+                        label: 'Watched',
+                        icon: Icons.check_circle_rounded,
+                      ),
+                    ),
+                    VerticalDivider(
+                        color: colors.border.withValues(alpha: 0.5),
+                        width: 1),
+                    Expanded(
+                      child: _StatItem(
+                        value: watchLaterCount.toString(),
+                        label: 'Watchlist',
+                        icon: Icons.bookmark_rounded,
+                      ),
+                    ),
+                    VerticalDivider(
+                        color: colors.border.withValues(alpha: 0.5),
+                        width: 1),
+                    Expanded(
+                      child: _StatItem(
+                        value: avgRating != null
+                            ? avgRating.toStringAsFixed(1)
+                            : '—',
+                        label: 'Avg Rating',
+                        icon: Icons.star_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Divider(
+                  color: colors.border.withValues(alpha: 0.5), height: 1),
+              const SizedBox(height: 20),
+
+              // Films vs TV counts
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.movie_rounded,
+                              size: 16, color: AppColors.primary),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              movies.length.toString(),
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            Text(
+                              'Films',
+                              style: TextStyle(
+                                  color: colors.textSecondary, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              tvShows.length.toString(),
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            Text(
+                              'TV Shows',
+                              style: TextStyle(
+                                  color: colors.textSecondary, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.tv_rounded,
+                              size: 16, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // Split bar
+              if (total > 0) ...[
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Stack(
+                    children: [
+                      Container(
+                        height: 6,
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: movieRatio,
+                        child: Container(
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${(movieRatio * 100).round()}% Films',
+                      style: TextStyle(color: colors.textMuted, fontSize: 10),
+                    ),
+                    Text(
+                      '${((1 - movieRatio) * 100).round()}% TV',
+                      style: TextStyle(color: colors.textMuted, fontSize: 10),
+                    ),
+                  ],
+                ),
+              ],
+
+              // Watch time box
+              if (totalMins > 0) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                        color: colors.border.withValues(alpha: 0.5), width: 0.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.av_timer_rounded,
+                            size: 18, color: AppColors.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Total Watch Time',
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            fmtTime(totalMins),
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _MediaCard(
-            icon: Icons.tv_rounded,
-            label: 'TV Shows',
-            count: tvShows.length,
-            timeLabel: fmtTime(minutesFor(tvShows)),
-            color: const Color(0xFF444444),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -498,59 +694,6 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ── Settings Card ─────────────────────────────────────────────────────────
-
-  Widget _buildSettingsCard({
-    required BuildContext context,
-    required WidgetRef ref,
-    required bool isSignedIn,
-  }) {
-    final colors = AppThemeColors.of(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: colors.card.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: colors.border.withValues(alpha: 0.5), width: 0.5),
-          ),
-          child: Column(
-            children: [
-              _SettingRow(
-                icon: Icons.info_outline_rounded,
-                iconBg: const Color(0xFF3A7BF7),
-                label: 'About RateMe',
-                onTap: () => _showAbout(context),
-              ),
-              Divider(height: 1, color: colors.border.withValues(alpha: 0.4)),
-              if (!isSignedIn)
-                _SettingRow(
-                  icon: Icons.login_rounded,
-                  iconBg: AppColors.primary,
-                  iconColor: Colors.black,
-                  label: 'Sign In / Create Account',
-                  labelColor: AppColors.primary,
-                  onTap: () => context.go('/signin'),
-                )
-              else
-                _SettingRow(
-                  icon: Icons.logout_rounded,
-                  iconBg: AppColors.error,
-                  label: 'Sign Out',
-                  labelColor: AppColors.error,
-                  onTap: () async {
-                    await ref.read(authNotifierProvider.notifier).signOut();
-                    ref.read(listsProvider.notifier).clearAll();
-                    if (context.mounted) context.go('/signin');
-                  },
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -625,12 +768,156 @@ class ProfileScreen extends ConsumerWidget {
 
 // ── Supporting widgets ────────────────────────────────────────────────────────
 
-class _StatCard extends StatelessWidget {
+class _SettingsCard extends ConsumerStatefulWidget {
+  final bool isSignedIn;
+  const _SettingsCard({required this.isSignedIn});
+
+  @override
+  ConsumerState<_SettingsCard> createState() => _SettingsCardState();
+}
+
+class _SettingsCardState extends ConsumerState<_SettingsCard> {
+  bool _reminderEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationService.isReminderEnabled().then((v) {
+      if (mounted) setState(() => _reminderEnabled = v);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: colors.card.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: colors.border.withValues(alpha: 0.5), width: 0.5),
+          ),
+          child: Column(
+            children: [
+              _SettingRow(
+                icon: Icons.info_outline_rounded,
+                iconBg: const Color(0xFF3A7BF7),
+                label: 'About RateMe',
+                onTap: () => _showAbout(context),
+              ),
+              Divider(height: 1, color: colors.border.withValues(alpha: 0.4)),
+              // Daily reminder toggle
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF30D158).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.notifications_rounded,
+                          size: 18, color: Color(0xFF30D158)),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        'Daily Reminder',
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: _reminderEnabled,
+                      activeThumbColor: AppColors.primary,
+                      activeTrackColor: AppColors.primary.withValues(alpha: 0.4),
+                      onChanged: (val) async {
+                        await NotificationService.setReminderEnabled(val);
+                        if (mounted) setState(() => _reminderEnabled = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Divider(height: 1, color: colors.border.withValues(alpha: 0.4)),
+              if (!widget.isSignedIn)
+                _SettingRow(
+                  icon: Icons.login_rounded,
+                  iconBg: AppColors.primary,
+                  iconColor: Colors.black,
+                  label: 'Sign In / Create Account',
+                  labelColor: AppColors.primary,
+                  onTap: () => context.go('/signin'),
+                )
+              else
+                _SettingRow(
+                  icon: Icons.logout_rounded,
+                  iconBg: AppColors.error,
+                  label: 'Sign Out',
+                  labelColor: AppColors.error,
+                  onTap: () async {
+                    await ref.read(authNotifierProvider.notifier).signOut();
+                    ref.read(listsProvider.notifier).clearAll();
+                    if (context.mounted) context.go('/signin');
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAbout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final colors = AppThemeColors.of(ctx);
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Image.asset('assets/logo_and_images/app_bar.png',
+                  width: 36, height: 36),
+              const SizedBox(width: 12),
+              Text('RateMe', style: TextStyle(color: colors.textPrimary)),
+            ],
+          ),
+          content: Text(
+            'RateMe is the first Iraqi app dedicated to rating movies and TV shows. Powered by TMDb.',
+            style: TextStyle(color: colors.textSecondary, height: 1.6),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close',
+                  style: TextStyle(color: AppColors.primary)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
   final String value;
   final String label;
   final IconData icon;
 
-  const _StatCard({
+  const _StatItem({
     required this.value,
     required this.label,
     required this.icon,
@@ -639,115 +926,31 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppThemeColors.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-      decoration: BoxDecoration(
-        border: Border.all(color: colors.border, width: 0.5),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: AppColors.primary, size: 20),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: AppColors.primary, size: 18),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.primary,
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MediaCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final int count;
-  final String timeLabel;
-  final Color color;
-
-  const _MediaCard({
-    required this.icon,
-    required this.label,
-    required this.count,
-    required this.timeLabel,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppThemeColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2), width: 0.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            count.toString(),
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.access_time_rounded, size: 11, color: colors.textMuted),
-              const SizedBox(width: 4),
-              Text(
-                timeLabel,
-                style: TextStyle(color: colors.textMuted, fontSize: 11),
-              ),
-            ],
-          ),
-        ],
-      ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

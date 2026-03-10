@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 class AppColors {
   // Dark cinema background palette
   static const Color background = Color(0xFF000000);
-  static const Color surface = Color(0xFF000000);
-  static const Color surfaceVariant = Color(0xFF000000);
-  static const Color card = Color(0xFF000000);
+  static const Color surface = Color(0xFF0E0E0E);
+  static const Color surfaceVariant = Color(0xFF1C1C1E);
+  static const Color card = Color(0xFF161616);
 
   // Accent — golden cinema feel
   static const Color primary = Color(0xFFFEC720);
