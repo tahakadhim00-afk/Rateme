@@ -10,27 +10,32 @@ final tmdbServiceProvider = Provider<TmdbService>((ref) => TmdbService());
 
 // Trending movies
 final trendingMoviesProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getTrending();
+  final results = await ref.watch(tmdbServiceProvider).getTrending();
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // Now playing
 final nowPlayingProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getNowPlaying();
+  final results = await ref.watch(tmdbServiceProvider).getNowPlaying();
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // Popular movies
 final popularMoviesProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getPopular();
+  final results = await ref.watch(tmdbServiceProvider).getPopular();
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // Top rated
 final topRatedProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getTopRated();
+  final results = await ref.watch(tmdbServiceProvider).getTopRated();
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // Upcoming
 final upcomingProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getUpcoming();
+  final results = await ref.watch(tmdbServiceProvider).getUpcoming();
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // Movie detail
@@ -52,7 +57,8 @@ final movieCastProvider =
 // Movie recommendations
 final movieRecommendationsProvider =
     FutureProvider.family<List<Movie>, int>((ref, movieId) async {
-  return ref.watch(tmdbServiceProvider).getMovieRecommendations(movieId);
+  final results = await ref.watch(tmdbServiceProvider).getMovieRecommendations(movieId);
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // Search (multi: movies + TV)
@@ -61,7 +67,8 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 final searchResultsProvider = FutureProvider<List<Movie>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.trim().isEmpty) return [];
-  return ref.watch(tmdbServiceProvider).searchMulti(query);
+  final results = await ref.watch(tmdbServiceProvider).searchMulti(query);
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // Genres
@@ -74,25 +81,30 @@ final selectedGenreProvider = StateProvider<int?>((ref) => null);
 
 final discoverByGenreProvider =
     FutureProvider.family<List<Movie>, int>((ref, genreId) async {
-  return ref.watch(tmdbServiceProvider).discoverByGenre(genreId);
+  final results = await ref.watch(tmdbServiceProvider).discoverByGenre(genreId);
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // ── TV Shows ──────────────────────────────────────────────────────────────
 
 final trendingTvProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getTrendingTv();
+  final results = await ref.watch(tmdbServiceProvider).getTrendingTv();
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 final popularTvProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getPopularTv();
+  final results = await ref.watch(tmdbServiceProvider).getPopularTv();
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 final topRatedTvProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getTopRatedTv();
+  final results = await ref.watch(tmdbServiceProvider).getTopRatedTv();
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 final airingTodayProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getAiringToday();
+  final results = await ref.watch(tmdbServiceProvider).getAiringToday();
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // ── Infinite scroll paginated sections ────────────────────────────────────
@@ -101,7 +113,8 @@ final airingTodayProvider = FutureProvider<List<Movie>>((ref) async {
 final paginatedSectionProvider =
     FutureProvider.family<List<Movie>, (String, int)>((ref, params) async {
   final (category, page) = params;
-  return ref.watch(tmdbServiceProvider).getPage(category, page);
+  final results = await ref.watch(tmdbServiceProvider).getPage(category, page);
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // ── TV Show detail ─────────────────────────────────────────────────────────
@@ -119,7 +132,8 @@ final tvSeasonDetailProvider =
 
 final tvRecommendationsProvider =
     FutureProvider.family<List<Movie>, int>((ref, tvId) async {
-  return ref.watch(tmdbServiceProvider).getTvRecommendations(tvId);
+  final results = await ref.watch(tmdbServiceProvider).getTvRecommendations(tvId);
+  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
 // ── Videos (trailers) ────────────────────────────────────────────────────

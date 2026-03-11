@@ -438,7 +438,7 @@ class ProfileScreen extends ConsumerWidget {
                             ? avgRating.toStringAsFixed(1)
                             : '—',
                         label: 'Avg Rating',
-                        icon: Icons.star_rounded,
+                        imagePath: 'assets/app_icons/star.png',
                       ),
                     ),
                   ],
@@ -915,12 +915,14 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
 class _StatItem extends StatelessWidget {
   final String value;
   final String label;
-  final IconData icon;
+  final IconData? icon;
+  final String? imagePath;
 
   const _StatItem({
     required this.value,
     required this.label,
-    required this.icon,
+    this.icon,
+    this.imagePath,
   });
 
   @override
@@ -929,7 +931,10 @@ class _StatItem extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: AppColors.primary, size: 18),
+        if (imagePath != null)
+          Image.asset(imagePath!, width: 18, height: 18, color: AppColors.primary)
+        else
+          Icon(icon, color: AppColors.primary, size: 18),
         const SizedBox(height: 8),
         Text(
           value,

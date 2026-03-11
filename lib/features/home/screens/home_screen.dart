@@ -19,7 +19,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _scrollController = ScrollController();
-
   @override
   void dispose() {
     _scrollController.dispose();
@@ -28,10 +27,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _refresh() async {
     ref.invalidate(trendingMoviesProvider);
-    ref.invalidate(nowPlayingProvider);
     ref.invalidate(popularMoviesProvider);
     ref.invalidate(topRatedProvider);
-    ref.invalidate(upcomingProvider);
+
     ref.invalidate(trendingTvProvider);
     ref.invalidate(airingTodayProvider);
     ref.invalidate(popularTvProvider);
@@ -43,10 +41,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     // Static providers (page 1)
     final trending = ref.watch(trendingMoviesProvider);
-    final nowPlaying = ref.watch(nowPlayingProvider);
     final popular = ref.watch(popularMoviesProvider);
     final topRated = ref.watch(topRatedProvider);
-    final upcoming = ref.watch(upcomingProvider);
+
     final trendingTv = ref.watch(trendingTvProvider);
     final airingToday = ref.watch(airingTodayProvider);
     final popularTv = ref.watch(popularTvProvider);
@@ -72,21 +69,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       const SliverToBoxAdapter(child: SizedBox(height: 30)),
       SliverToBoxAdapter(
-        child: nowPlaying.when(
-          data: (movies) => MovieRow(
-            title: 'Now Playing',
-            movies: movies,
-            actionLabel: 'See All',
-            onActionTap: () => context.push('/see-all?category=now_playing&title=Now+Playing&mediaType=movie'),
-            onMovieTap: (m) => context.push('/movie/${m.id}'),
-          ),
-          loading: () => const MovieRow(title: 'Now Playing', isLoading: true),
-          error: (e, _) => const SizedBox.shrink(),
-        ),
-      ),
-
-      const SliverToBoxAdapter(child: SizedBox(height: 30)),
-      SliverToBoxAdapter(
         child: popular.when(
           data: (movies) => MovieRow(
             title: 'Popular Movies',
@@ -94,14 +76,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             actionLabel: 'See All',
             onActionTap: () => context.push('/see-all?category=popular_movies&title=Popular+Movies&mediaType=movie'),
             onMovieTap: (m) => context.push('/movie/${m.id}'),
-            cardWidth: 120,
-            cardHeight: 178,
+            cardWidth: 100,
+            cardHeight: 150,
           ),
           loading: () => const MovieRow(
               title: 'Popular Movies',
               isLoading: true,
-              cardWidth: 120,
-              cardHeight: 178),
+              cardWidth: 100,
+              cardHeight: 150),
           error: (e, _) => const SizedBox.shrink(),
         ),
       ),
@@ -117,27 +99,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onMovieTap: (m) => context.push('/movie/${m.id}'),
           ),
           loading: () => const MovieRow(title: 'Top Rated', isLoading: true),
-          error: (e, _) => const SizedBox.shrink(),
-        ),
-      ),
-
-      const SliverToBoxAdapter(child: SizedBox(height: 30)),
-      SliverToBoxAdapter(
-        child: upcoming.when(
-          data: (movies) => MovieRow(
-            title: 'Upcoming',
-            movies: movies,
-            actionLabel: 'See All',
-            onActionTap: () => context.push('/see-all?category=upcoming&title=Upcoming&mediaType=movie'),
-            onMovieTap: (m) => context.push('/movie/${m.id}'),
-            cardWidth: 140,
-            cardHeight: 210,
-          ),
-          loading: () => const MovieRow(
-              title: 'Upcoming',
-              isLoading: true,
-              cardWidth: 140,
-              cardHeight: 210),
           error: (e, _) => const SizedBox.shrink(),
         ),
       ),
@@ -167,14 +128,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             actionLabel: 'See All',
             onActionTap: () => context.push('/see-all?category=airing_today&title=Airing+Today&mediaType=tv'),
             onMovieTap: (m) => context.push('/tv/${m.id}'),
-            cardWidth: 140,
-            cardHeight: 210,
+            cardWidth: 120,
+            cardHeight: 180,
           ),
           loading: () => const MovieRow(
               title: 'Airing Today',
               isLoading: true,
-              cardWidth: 140,
-              cardHeight: 210),
+              cardWidth: 120,
+              cardHeight: 180),
           error: (e, _) => const SizedBox.shrink(),
         ),
       ),
@@ -188,14 +149,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             actionLabel: 'See All',
             onActionTap: () => context.push('/see-all?category=popular_tv&title=Popular+TV+Shows&mediaType=tv'),
             onMovieTap: (m) => context.push('/tv/${m.id}'),
-            cardWidth: 120,
-            cardHeight: 178,
+            cardWidth: 100,
+            cardHeight: 150,
           ),
           loading: () => const MovieRow(
               title: 'Popular TV Shows',
               isLoading: true,
-              cardWidth: 120,
-              cardHeight: 178),
+              cardWidth: 100,
+              cardHeight: 150),
           error: (e, _) => const SizedBox.shrink(),
         ),
       ),
@@ -259,18 +220,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       actions: [
-        Badge(
-          isLabelVisible: notifCount > 0,
-          label: Text('$notifCount'),
-          backgroundColor: AppColors.secondary,
-          textColor: Colors.white,
-          child: IconButton(
-            icon: Icon(Icons.notifications_outlined,
-                color: Theme.of(context).colorScheme.onSurface),
-            onPressed: () => _showNotificationsSheet(context),
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: Badge(
+            isLabelVisible: notifCount > 0,
+            label: Text('$notifCount'),
+            backgroundColor: AppColors.secondary,
+            textColor: Colors.white,
+            offset: const Offset(-2, 2),
+            child: IconButton(
+              icon: Icon(Icons.notifications_outlined,
+                  color: Theme.of(context).colorScheme.onSurface),
+              onPressed: () => _showNotificationsSheet(context),
+            ),
           ),
         ),
-        const SizedBox(width: 4),
       ],
     );
   }
