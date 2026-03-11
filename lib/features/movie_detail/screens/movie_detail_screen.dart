@@ -109,15 +109,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
             ? AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterW500)
             : null;
 
-    final movieAsMovie = Movie(
-      id: movie.id,
-      title: movie.title,
-      posterPath: movie.posterPath,
-      backdropPath: movie.backdropPath,
-      voteAverage: movie.voteAverage,
-      releaseDate: movie.releaseDate,
-    );
-
     final imageCover = Stack(
       fit: StackFit.expand,
       children: [
@@ -590,34 +581,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
               ),
             ),
           ),
-          // Floating bookmark button
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            right: 8,
-            child: GestureDetector(
-              onTap: () {
-                if (!ref.read(isSignedInProvider)) {
-                  _requireSignIn(context);
-                  return;
-                }
-                listNotifier.toggleWatchLater(movieAsMovie);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isWatchLater
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
-                  color: isWatchLater ? AppColors.primary : Colors.white,
-                  size: 22,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -685,7 +648,7 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                   ),
                 ],
                 const SizedBox(height: 10),
-                RatingBadge(rating: movie.voteAverage, fontSize: 14, iconSize: 16),
+                RatingBadge(rating: movie.voteAverage, fontSize: 14, iconSize: 16, showBackground: false),
                 const SizedBox(height: 4),
                 Text(
                   '${_formatCount(movie.voteCount)} votes',
@@ -914,27 +877,33 @@ class _BoxOfficeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppThemeColors.of(context);
-    return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: colors.surfaceVariant,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.border, width: 0.5),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: colors.surfaceVariant.withValues(alpha: 0.90),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border.withValues(alpha: 0.5), width: 0.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 14, color: colors.textMuted),
+                  const SizedBox(width: 6),
+                  Text(label, style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w500)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(value, style: TextStyle(fontSize: 18, color: colors.textPrimary, fontWeight: FontWeight.w700)),
+            ],
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 14, color: colors.textMuted),
-                const SizedBox(width: 6),
-                Text(label, style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w500)),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(value, style: TextStyle(fontSize: 18, color: colors.textPrimary, fontWeight: FontWeight.w700)),
-          ],
-        ),
+      ),
     );
   }
 }
@@ -1012,35 +981,41 @@ class _RoundActionBtn extends StatelessWidget {
         child: Builder(builder: (context) {
           final colors = AppThemeColors.of(context);
 
-          return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: active
-                    ? activeColor.withValues(alpha: 0.15)
-                    : colors.surfaceVariant,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: active ? activeColor.withValues(alpha: 0.4) : colors.border,
-                  width: active ? 1.5 : 0.5,
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: active
+                      ? activeColor.withValues(alpha: 0.15)
+                      : colors.surfaceVariant.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: active ? activeColor.withValues(alpha: 0.4) : colors.border.withValues(alpha: 0.5),
+                    width: active ? 1.5 : 0.5,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(icon,
+                        size: 22,
+                        color: active ? activeColor : colors.textMuted),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: active ? activeColor : colors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
-                children: [
-                  Icon(icon,
-                      size: 22,
-                      color: active ? activeColor : colors.textMuted),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: active ? activeColor : colors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
+            ),
           );
         }),
       ),
