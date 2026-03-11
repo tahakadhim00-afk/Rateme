@@ -48,70 +48,91 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.background,
-      body: isSignedIn
-          ? CustomScrollView(
-              slivers: [
-                // ── Cinematic Header ─────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: _buildHeader(
-                    context: context,
-                    ref: ref,
-                    coverUrl: coverUrl,
-                    avatarUrl: avatarUrl,
-                    displayName: displayName,
-                    email: email,
-                    isSignedIn: isSignedIn,
-                    authLoading: authState.isLoading,
-                    colors: colors,
-                  ),
+      body: Stack(
+        children: [
+          // ── Blurry cover background ────────────────────────────────────────
+          if (coverUrl != null) ...[
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                child: CachedNetworkImage(
+                  imageUrl: coverUrl,
+                  fit: BoxFit.cover,
                 ),
+              ),
+            ),
+            Positioned.fill(
+              child: Container(color: colors.background.withValues(alpha: 0.75)),
+            ),
+          ],
 
-                // ── Stats ────────────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                    child: isLoading
-                        ? _shimmerBox(context, 220)
-                        : _buildStatsSection(
-                            context,
-                            watched.length,
-                            watchLater.length,
-                            avgRating,
-                            movies,
-                            tvShows,
-                          ),
-                  ),
-                ),
-
-                // ── Genre Chart ───────────────────────────────────────────────
-                if (!isLoading && watched.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: _buildGenreChart(context, watched),
+          // ── Content ───────────────────────────────────────────────────────
+          isSignedIn
+              ? CustomScrollView(
+                  slivers: [
+                    // ── Cinematic Header ─────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: _buildHeader(
+                        context: context,
+                        ref: ref,
+                        coverUrl: coverUrl,
+                        avatarUrl: avatarUrl,
+                        displayName: displayName,
+                        email: email,
+                        isSignedIn: isSignedIn,
+                        authLoading: authState.isLoading,
+                        colors: colors,
+                      ),
                     ),
-                  ),
 
-                if (isLoading)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: _shimmerBox(context, 200),
+                    // ── Stats ────────────────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                        child: isLoading
+                            ? _shimmerBox(context, 220)
+                            : _buildStatsSection(
+                                context,
+                                watched.length,
+                                watchLater.length,
+                                avgRating,
+                                movies,
+                                tvShows,
+                              ),
+                      ),
                     ),
-                  ),
 
-                // ── Settings ─────────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-                    child: _SettingsCard(isSignedIn: isSignedIn),
-                  ),
-                ),
+                    // ── Genre Chart ───────────────────────────────────────────────
+                    if (!isLoading && watched.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                          child: _buildGenreChart(context, watched),
+                        ),
+                      ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 48)),
-              ],
-            )
-          : _buildGuestView(context, ref, authState.isLoading, colors),
+                    if (isLoading)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                          child: _shimmerBox(context, 200),
+                        ),
+                      ),
+
+                    // ── Settings ─────────────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                        child: _SettingsCard(isSignedIn: isSignedIn),
+                      ),
+                    ),
+
+                    const SliverToBoxAdapter(child: SizedBox(height: 48)),
+                  ],
+                )
+              : _buildGuestView(context, ref, authState.isLoading, colors),
+        ],
+      ),
     );
   }
 
@@ -474,7 +495,7 @@ class ProfileScreen extends ConsumerWidget {
                               style: const TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 20,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w400,
                                 letterSpacing: -0.5,
                               ),
                             ),
@@ -501,7 +522,7 @@ class ProfileScreen extends ConsumerWidget {
                               style: const TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 20,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w400,
                                 letterSpacing: -0.5,
                               ),
                             ),
@@ -609,7 +630,7 @@ class ProfileScreen extends ConsumerWidget {
                             style: const TextStyle(
                               color: AppColors.primary,
                               fontSize: 18,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w400,
                               letterSpacing: -0.3,
                             ),
                           ),
@@ -941,7 +962,7 @@ class _StatItem extends StatelessWidget {
           style: const TextStyle(
             color: AppColors.primary,
             fontSize: 24,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w400,
             letterSpacing: -0.5,
           ),
         ),

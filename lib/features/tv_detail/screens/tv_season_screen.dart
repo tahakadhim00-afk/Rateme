@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
@@ -29,20 +30,47 @@ class TvSeasonScreen extends ConsumerWidget {
 
     final showTitle = showAsync.valueOrNull?.title ?? '';
 
+    final show = showAsync.valueOrNull;
+    final bgImageUrl = show != null
+        ? (show.hasBackdrop
+            ? AppConstants.backdropUrl(show.backdropPath!)
+            : show.hasPoster
+                ? AppConstants.posterUrl(show.posterPath!, size: AppConstants.posterW500)
+                : null)
+        : null;
+
     return Scaffold(
       backgroundColor: AppThemeColors.of(context).background,
-      body: seasonAsync.when(
-        data: (season) => _SeasonView(
-          season: season,
-          showTitle: showTitle,
-          tvId: tvId,
-        ),
-        loading: () => const _SeasonSkeleton(),
-        error: (e, s) => Center(
-          child: Text('Failed to load season',
-              style: TextStyle(
-                  color: AppThemeColors.of(context).textSecondary)),
-        ),
+      body: Stack(
+        children: [
+          if (bgImageUrl != null) ...[
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                child: CachedNetworkImage(
+                  imageUrl: bgImageUrl,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: Container(color: Colors.black.withValues(alpha: 0.78)),
+            ),
+          ],
+          seasonAsync.when(
+            data: (season) => _SeasonView(
+              season: season,
+              showTitle: showTitle,
+              tvId: tvId,
+            ),
+            loading: () => const _SeasonSkeleton(),
+            error: (e, s) => Center(
+              child: Text('Failed to load season',
+                  style: TextStyle(
+                      color: AppThemeColors.of(context).textSecondary)),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -379,11 +407,15 @@ class _EpisodeTileState extends ConsumerState<_EpisodeTile> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Container(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
         decoration: BoxDecoration(
-          color: colors.card,
+          color: colors.card.withValues(alpha: 0.45),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.border, width: 0.5),
+          border: Border.all(color: colors.border.withValues(alpha: 0.5), width: 0.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -558,6 +590,8 @@ class _EpisodeTileState extends ConsumerState<_EpisodeTile> {
               ),
             ),
           ],
+        ),
+      ),
         ),
       ),
     );

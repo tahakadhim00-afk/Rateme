@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -139,9 +140,31 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
       ],
     );
 
+    final bgImageUrl = tv.hasBackdrop
+        ? AppConstants.backdropUrl(tv.backdropPath!)
+        : tv.hasPoster
+            ? AppConstants.posterUrl(tv.posterPath!, size: AppConstants.posterW500)
+            : null;
+
     return Scaffold(
+      backgroundColor: AppThemeColors.of(context).background,
       body: Stack(
         children: [
+          // Fixed blurred background — stays in place while content scrolls
+          if (bgImageUrl != null) ...[
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                child: CachedNetworkImage(
+                  imageUrl: bgImageUrl,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: Container(color: Colors.black.withValues(alpha: 0.78)),
+            ),
+          ],
           CustomScrollView(
             slivers: [
               // Header: trailer player or image (plain SliverToBoxAdapter — no transforms)
@@ -348,28 +371,26 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
               ),
             ),
           ),
-          // Floating bookmark button
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            right: 8,
-            child: GestureDetector(
-              onTap: () => listNotifier.toggleWatchLater(_tvAsMovie),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isWatchLater
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
-                  color: isWatchLater ? AppColors.primary : Colors.white,
-                  size: 22,
+          // Floating status badge
+          if (tv.status != null)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              right: 12,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: _StatusBadge(isEnded: tv.isEnded, status: tv.status!),
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -431,17 +452,19 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
                       _InfoChip(
                           icon: Icons.schedule_rounded,
                           label: tv.episodeRuntimeFormatted),
-                    if (tv.status != null)
-                      _StatusBadge(isEnded: tv.isEnded, status: tv.status!),
                   ],
                 ),
                 const SizedBox(height: 10),
-                RatingBadge(
-                    rating: tv.voteAverage, fontSize: 14, iconSize: 16),
-                const SizedBox(height: 4),
-                Text(
-                  '${_formatCount(tv.voteCount)} votes',
-                  style: Theme.of(context).textTheme.labelSmall,
+                Row(
+                  children: [
+                    RatingBadge(
+                        rating: tv.voteAverage, fontSize: 14, iconSize: 16, showBackground: false),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_formatCount(tv.voteCount)} votes',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -771,20 +794,12 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isEnded ? AppColors.error : AppColors.success;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 0.5),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+    return Text(
+      status,
+      style: TextStyle(
+        color: color,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
@@ -1024,36 +1039,42 @@ class _RoundActionBtn extends StatelessWidget {
         onTap: onTap,
         child: Builder(builder: (context) {
           final colors = AppThemeColors.of(context);
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: active
-                  ? activeColor.withValues(alpha: 0.15)
-                  : colors.surfaceVariant,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: active
-                    ? activeColor.withValues(alpha: 0.4)
-                    : colors.border,
-                width: active ? 1.5 : 0.5,
-              ),
-            ),
-            child: Column(
-              children: [
-                Icon(icon,
-                    size: 22,
-                    color: active ? activeColor : colors.textMuted),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: active ? activeColor : colors.textMuted,
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: active
+                      ? activeColor.withValues(alpha: 0.15)
+                      : colors.surfaceVariant.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: active
+                        ? activeColor.withValues(alpha: 0.4)
+                        : colors.border.withValues(alpha: 0.5),
+                    width: active ? 1.5 : 0.5,
                   ),
                 ),
-              ],
+                child: Column(
+                  children: [
+                    Icon(icon,
+                        size: 22,
+                        color: active ? activeColor : colors.textMuted),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: active ? activeColor : colors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         }),

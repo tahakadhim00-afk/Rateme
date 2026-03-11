@@ -30,9 +30,9 @@ class RatingBadge extends StatelessWidget {
           : EdgeInsets.zero,
       decoration: showBackground
           ? BoxDecoration(
-              color: _ratingColor.withValues(alpha: 0.15),
+              color: _ratingColor.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _ratingColor.withValues(alpha: 0.3)),
+              border: Border.all(color: _ratingColor.withValues(alpha: 0.2)),
             )
           : null,
       child: Row(

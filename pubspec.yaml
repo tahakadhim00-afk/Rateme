@@ -23,6 +23,7 @@ dependencies:
 
   # Images
   cached_network_image: ^3.4.1
+  palette_generator: ^0.3.3
 
   # Fonts
   google_fonts: ^6.2.1
