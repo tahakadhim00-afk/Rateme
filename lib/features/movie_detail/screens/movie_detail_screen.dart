@@ -109,6 +109,44 @@ class _DetailViewState extends ConsumerState<_DetailView> {
             ? AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterW500)
             : null;
 
+    final movieAsMovie = Movie(
+      id: movie.id,
+      title: movie.title,
+      posterPath: movie.posterPath,
+      backdropPath: movie.backdropPath,
+      voteAverage: movie.voteAverage,
+      releaseDate: movie.releaseDate,
+    );
+
+    final imageCover = Stack(
+      fit: StackFit.expand,
+      children: [
+        if (movie.hasBackdrop)
+          CachedNetworkImage(
+            imageUrl: AppConstants.backdropUrl(movie.backdropPath!),
+            fit: BoxFit.cover,
+          )
+        else if (movie.hasPoster)
+          CachedNetworkImage(
+            imageUrl: AppConstants.posterUrl(movie.posterPath!,
+                size: AppConstants.posterW500),
+            fit: BoxFit.cover,
+          )
+        else
+          Container(color: AppThemeColors.of(context).surface),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.transparent, Color(0xFF000000)],
+              stops: [0.0, 0.45, 1.0],
+            ),
+          ),
+        ),
+      ],
+    );
+
     return Scaffold(
       backgroundColor: AppThemeColors.of(context).background,
       body: Stack(
@@ -130,7 +168,13 @@ class _DetailViewState extends ConsumerState<_DetailView> {
           ],
           CustomScrollView(
         slivers: [
-          _buildSliverAppBar(context, movie, isWatchLater, listNotifier),
+          // Header: trailer player or image (plain SliverToBoxAdapter — no transforms)
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 300,
+              child: imageCover,
+            ),
+          ),
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,6 +233,42 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                                   ),
                                 ))
                             .toList(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Budget & Revenue
+                if ((movie.budget != null && movie.budget! > 0) ||
+                    (movie.revenue != null && movie.revenue! > 0)) ...[
+                  _buildSection(
+                    context,
+                    title: 'Box Office',
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          if (movie.budget != null && movie.budget! > 0)
+                            Expanded(
+                              child: _BoxOfficeCard(
+                                label: 'Budget',
+                                value: _formatCurrency(movie.budget!),
+                                icon: Icons.payments_outlined,
+                              ),
+                            ),
+                          if (movie.budget != null && movie.budget! > 0 &&
+                              movie.revenue != null && movie.revenue! > 0)
+                            const SizedBox(width: 12),
+                          if (movie.revenue != null && movie.revenue! > 0)
+                            Expanded(
+                              child: _BoxOfficeCard(
+                                label: 'Revenue',
+                                value: _formatCurrency(movie.revenue!),
+                                icon: Icons.trending_up_rounded,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
@@ -492,105 +572,53 @@ class _DetailViewState extends ConsumerState<_DetailView> {
           ),
         ],
           ),
-        ],
-      ),
-    );
-  }
-
-  SliverAppBar _buildSliverAppBar(
-    BuildContext context,
-    MovieDetail movie,
-    bool isWatchLater,
-    ListsNotifier listNotifier,
-  ) {
-    // Convert MovieDetail to Movie for list operations
-    final movieAsMovie = Movie(
-      id: movie.id,
-      title: movie.title,
-      posterPath: movie.posterPath,
-      backdropPath: movie.backdropPath,
-      voteAverage: movie.voteAverage,
-      releaseDate: movie.releaseDate,
-    );
-
-    return SliverAppBar(
-      expandedHeight: 300,
-      pinned: true,
-      backgroundColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      leading: GestureDetector(
-        onTap: () => context.pop(),
-        child: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.arrow_back_ios_rounded,
-              color: Colors.white, size: 20),
-        ),
-      ),
-      actions: [
-        GestureDetector(
-          onTap: () {
-            if (!ref.read(isSignedInProvider)) {
-              _requireSignIn(context);
-              return;
-            }
-            listNotifier.toggleWatchLater(movieAsMovie);
-          },
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              isWatchLater
-                  ? Icons.bookmark_rounded
-                  : Icons.bookmark_border_rounded,
-              color: isWatchLater ? AppColors.primary : Colors.white,
-              size: 22,
+          // Floating back button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 8,
+            child: GestureDetector(
+              onTap: () => context.pop(),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.arrow_back_ios_rounded,
+                    color: Colors.white, size: 20),
+              ),
             ),
           ),
-        ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Clear photo/backdrop
-            if (movie.hasBackdrop)
-              CachedNetworkImage(
-                imageUrl: AppConstants.backdropUrl(movie.backdropPath!),
-                fit: BoxFit.cover,
-              )
-            else if (movie.hasPoster)
-              CachedNetworkImage(
-                imageUrl: AppConstants.posterUrl(movie.posterPath!,
-                    size: AppConstants.posterW500),
-                fit: BoxFit.cover,
-              )
-            else
-              Container(color: AppThemeColors.of(context).surface),
-            // Clean gradient fade: transparent → page background color
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.transparent,
-                    Color(0xFF000000),
-                  ],
-                  stops: [0.0, 0.45, 1.0],
+          // Floating bookmark button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 8,
+            child: GestureDetector(
+              onTap: () {
+                if (!ref.read(isSignedInProvider)) {
+                  _requireSignIn(context);
+                  return;
+                }
+                listNotifier.toggleWatchLater(movieAsMovie);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isWatchLater
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  color: isWatchLater ? AppColors.primary : Colors.white,
+                  size: 22,
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -643,6 +671,19 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                       _InfoChip(icon: Icons.schedule_rounded, label: movie.runtimeFormatted),
                   ],
                 ),
+                if (movie.directors.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Directed by ${movie.directors.join(', ')}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppThemeColors.of(context).textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 const SizedBox(height: 10),
                 RatingBadge(rating: movie.voteAverage, fontSize: 14, iconSize: 16),
                 const SizedBox(height: 4),
@@ -854,6 +895,48 @@ class _DetailViewState extends ConsumerState<_DetailView> {
     if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
     return count.toString();
   }
+
+  String _formatCurrency(int amount) {
+    if (amount >= 1000000000) return '\$${(amount / 1000000000).toStringAsFixed(1)}B';
+    if (amount >= 1000000) return '\$${(amount / 1000000).toStringAsFixed(1)}M';
+    if (amount >= 1000) return '\$${(amount / 1000).toStringAsFixed(1)}K';
+    return '\$$amount';
+  }
+}
+
+class _BoxOfficeCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _BoxOfficeCard({required this.label, required this.value, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: colors.surfaceVariant,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.border, width: 0.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 14, color: colors.textMuted),
+                const SizedBox(width: 6),
+                Text(label, style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w500)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(value, style: TextStyle(fontSize: 18, color: colors.textPrimary, fontWeight: FontWeight.w700)),
+          ],
+        ),
+    );
+  }
 }
 
 class _InfoRow extends StatelessWidget {
@@ -930,34 +1013,34 @@ class _RoundActionBtn extends StatelessWidget {
           final colors = AppThemeColors.of(context);
 
           return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: active
-                  ? activeColor.withValues(alpha: 0.15)
-                  : colors.surfaceVariant,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: active ? activeColor.withValues(alpha: 0.4) : colors.border,
-                width: active ? 1.5 : 0.5,
-              ),
-            ),
-            child: Column(
-              children: [
-                Icon(icon,
-                    size: 22,
-                    color: active ? activeColor : colors.textMuted),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: active ? activeColor : colors.textMuted,
-                  ),
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: active
+                    ? activeColor.withValues(alpha: 0.15)
+                    : colors.surfaceVariant,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: active ? activeColor.withValues(alpha: 0.4) : colors.border,
+                  width: active ? 1.5 : 0.5,
                 ),
-              ],
-            ),
+              ),
+              child: Column(
+                children: [
+                  Icon(icon,
+                      size: 22,
+                      color: active ? activeColor : colors.textMuted),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: active ? activeColor : colors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
           );
         }),
       ),

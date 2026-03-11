@@ -40,6 +40,9 @@ class MovieDetail {
   final String? originalLanguage;
   final double popularity;
   final String? homepage;
+  final int? budget;
+  final int? revenue;
+  final List<String> directors;
 
   const MovieDetail({
     required this.id,
@@ -58,6 +61,9 @@ class MovieDetail {
     this.originalLanguage,
     this.popularity = 0.0,
     this.homepage,
+    this.budget,
+    this.revenue,
+    this.directors = const [],
   });
 
   factory MovieDetail.fromJson(Map<String, dynamic> json) {
@@ -85,6 +91,13 @@ class MovieDetail {
       originalLanguage: json['original_language'] as String?,
       popularity: (json['popularity'] as num?)?.toDouble() ?? 0.0,
       homepage: json['homepage'] as String?,
+      budget: json['budget'] as int?,
+      revenue: json['revenue'] as int?,
+      directors: ((json['credits'] as Map<String, dynamic>?)?['crew'] as List<dynamic>?)
+              ?.where((e) => (e as Map<String, dynamic>)['job'] == 'Director')
+              .map((e) => (e as Map<String, dynamic>)['name'] as String)
+              .toList() ??
+          [],
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -36,9 +37,7 @@ class TvSeasonScreen extends ConsumerWidget {
           showTitle: showTitle,
           tvId: tvId,
         ),
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+        loading: () => const _SeasonSkeleton(),
         error: (e, s) => Center(
           child: Text('Failed to load season',
               style: TextStyle(
@@ -193,6 +192,120 @@ class _SeasonView extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+class _SeasonSkeleton extends StatelessWidget {
+  const _SeasonSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    return Scaffold(
+      backgroundColor: colors.background,
+      body: Shimmer.fromColors(
+        baseColor: colors.surfaceVariant,
+        highlightColor: colors.border,
+        child: CustomScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          slivers: [
+            // App bar placeholder
+            SliverAppBar(
+              pinned: true,
+              backgroundColor: colors.surface,
+              automaticallyImplyLeading: false,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 100, height: 10, color: Colors.white, margin: const EdgeInsets.only(bottom: 6)),
+                  Container(width: 160, height: 14, color: Colors.white),
+                ],
+              ),
+            ),
+
+            // Season header
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(width: 90, height: 134, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12))),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(width: 120, height: 14, color: Colors.white),
+                          const SizedBox(height: 10),
+                          Container(width: 80, height: 12, color: Colors.white),
+                          const SizedBox(height: 10),
+                          Container(height: 12, color: Colors.white),
+                          const SizedBox(height: 6),
+                          Container(height: 12, color: Colors.white),
+                          const SizedBox(height: 6),
+                          Container(width: 140, height: 12, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Episode tiles
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) => Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Container(
+                    height: 110,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 120,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(16),
+                              bottomLeft: Radius.circular(16),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(width: 60, height: 12, color: Colors.white),
+                              const SizedBox(height: 8),
+                              Container(height: 12, color: Colors.white),
+                              const SizedBox(height: 6),
+                              Container(width: 120, height: 12, color: Colors.white),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                    ),
+                  ),
+                ),
+                childCount: 6,
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 40)),
+          ],
+        ),
       ),
     );
   }

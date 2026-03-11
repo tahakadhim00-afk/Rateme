@@ -23,8 +23,8 @@ class MovieRow extends StatelessWidget {
     this.actionLabel,
     this.onActionTap,
     this.onMovieTap,
-    this.cardWidth = 130,
-    this.cardHeight = 195,
+    this.cardWidth = 110,
+    this.cardHeight = 165,
   });
 
   @override

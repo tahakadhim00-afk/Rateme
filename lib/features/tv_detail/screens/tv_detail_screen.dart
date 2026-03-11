@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
@@ -24,9 +25,7 @@ class TvDetailScreen extends ConsumerWidget {
     final detailAsync = ref.watch(tvDetailProvider(tvId));
     return detailAsync.when(
       data: (tv) => _TvDetailView(tv: tv),
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      ),
+      loading: () => const _TvDetailSkeleton(),
       error: (e, _) => Scaffold(
         appBar: AppBar(),
         body: Builder(
@@ -108,11 +107,51 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
         (listsState[ListType.watchLater] ?? []).any((e) => e.mediaId == tv.id);
     final recommendations = ref.watch(tvRecommendationsProvider(tv.id));
 
+    final imageCover = Stack(
+      fit: StackFit.expand,
+      children: [
+        if (tv.hasBackdrop)
+          CachedNetworkImage(
+            imageUrl: AppConstants.backdropUrl(tv.backdropPath!),
+            fit: BoxFit.cover,
+          )
+        else if (tv.hasPoster)
+          CachedNetworkImage(
+            imageUrl: AppConstants.posterUrl(tv.posterPath!,
+                size: AppConstants.posterW500),
+            fit: BoxFit.cover,
+          )
+        else
+          Container(color: AppThemeColors.of(context).surface),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.transparent,
+                AppThemeColors.of(context).background,
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.4, 1.0],
+            ),
+          ),
+        ),
+      ],
+    );
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(context, tv, isWatchLater, listNotifier),
-          SliverToBoxAdapter(
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              // Header: trailer player or image (plain SliverToBoxAdapter — no transforms)
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 300,
+                  child: imageCover,
+                ),
+              ),
+              SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -290,83 +329,48 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  SliverAppBar _buildSliverAppBar(
-    BuildContext context,
-    TvDetail tv,
-    bool isWatchLater,
-    ListsNotifier listNotifier,
-  ) {
-    return SliverAppBar(
-      expandedHeight: 300,
-      pinned: true,
-      leading: GestureDetector(
-        onTap: () => context.pop(),
-        child: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.arrow_back_ios_rounded,
-              color: Colors.white, size: 20),
-        ),
-      ),
-      actions: [
-        GestureDetector(
-          onTap: () => listNotifier.toggleWatchLater(_tvAsMovie),
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              isWatchLater
-                  ? Icons.bookmark_rounded
-                  : Icons.bookmark_border_rounded,
-              color: isWatchLater ? AppColors.primary : Colors.white,
-              size: 22,
+          // Floating back button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 8,
+            child: GestureDetector(
+              onTap: () => context.pop(),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.arrow_back_ios_rounded,
+                    color: Colors.white, size: 20),
+              ),
             ),
           ),
-        ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (tv.hasBackdrop)
-              CachedNetworkImage(
-                imageUrl: AppConstants.backdropUrl(tv.backdropPath!),
-                fit: BoxFit.cover,
-              )
-            else if (tv.hasPoster)
-              CachedNetworkImage(
-                imageUrl: AppConstants.posterUrl(tv.posterPath!,
-                    size: AppConstants.posterW500),
-                fit: BoxFit.cover,
-              )
-            else
-              Container(color: AppThemeColors.of(context).surface),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.transparent,
-                    AppThemeColors.of(context).background
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.4, 1.0],
+          // Floating bookmark button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 8,
+            child: GestureDetector(
+              onTap: () => listNotifier.toggleWatchLater(_tvAsMovie),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isWatchLater
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  color: isWatchLater ? AppColors.primary : Colors.white,
+                  size: 22,
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -820,6 +824,180 @@ class _InfoChip extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+class _TvDetailSkeleton extends StatelessWidget {
+  const _TvDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppThemeColors.of(context).background,
+      body: Shimmer.fromColors(
+        baseColor: AppThemeColors.of(context).surfaceVariant,
+        highlightColor: AppThemeColors.of(context).border,
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Hero backdrop
+              Container(height: 300, color: Colors.white),
+
+              // Main info row
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SBox(w: 110, h: 163, r: 14),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SBox(h: 22),
+                          const SizedBox(height: 8),
+                          _SBox(h: 22, w: 160),
+                          const SizedBox(height: 14),
+                          Row(children: [
+                            _SBox(w: 76, h: 28, r: 8),
+                            const SizedBox(width: 8),
+                            _SBox(w: 68, h: 28, r: 8),
+                            const SizedBox(width: 8),
+                            _SBox(w: 72, h: 28, r: 8),
+                          ]),
+                          const SizedBox(height: 10),
+                          _SBox(w: 72, h: 22, r: 6),
+                          const SizedBox(height: 6),
+                          _SBox(w: 80, h: 13, r: 4),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Action buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(children: [
+                  Expanded(child: _SBox(h: 56, r: 14)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _SBox(h: 56, r: 14)),
+                ]),
+              ),
+              const SizedBox(height: 28),
+
+              // Overview
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SBox(w: 80, h: 16, r: 4),
+                    const SizedBox(height: 12),
+                    _SBox(h: 14),
+                    const SizedBox(height: 6),
+                    _SBox(h: 14),
+                    const SizedBox(height: 6),
+                    _SBox(h: 14, w: 200),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Genres
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SBox(w: 60, h: 16, r: 4),
+                    const SizedBox(height: 12),
+                    Row(children: [
+                      _SBox(w: 80, h: 32, r: 20),
+                      const SizedBox(width: 8),
+                      _SBox(w: 70, h: 32, r: 20),
+                      const SizedBox(width: 8),
+                      _SBox(w: 90, h: 32, r: 20),
+                    ]),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Seasons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _SBox(w: 100, h: 16, r: 4),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 4,
+                  itemBuilder: (_, i) => Padding(
+                    padding: EdgeInsets.only(right: i < 3 ? 12 : 0),
+                    child: _SBox(w: 110, h: 200, r: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Cast
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _SBox(w: 60, h: 16, r: 4),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 160,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 6,
+                  itemBuilder: (_, i) => Padding(
+                    padding: EdgeInsets.only(right: i < 5 ? 14 : 0),
+                    child: Column(children: [
+                      _SBox(w: 90, h: 110, r: 12),
+                      const SizedBox(height: 6),
+                      _SBox(w: 66, h: 10, r: 4),
+                    ]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SBox extends StatelessWidget {
+  final double? w;
+  final double? h;
+  final double r;
+  const _SBox({this.w, this.h, this.r = 6});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: w,
+        height: h,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(r),
+        ),
+      );
 }
 
 // ── Round Action Button ────────────────────────────────────────────────────────

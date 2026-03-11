@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 class MainScaffold extends StatelessWidget {
@@ -25,13 +27,47 @@ class MainScaffold extends StatelessWidget {
   }
 }
 
-class _BottomNav extends StatelessWidget {
+class _BottomNav extends ConsumerWidget {
   final int currentIndex;
 
   const _BottomNav({required this.currentIndex});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final avatarUrl =
+        user?.userMetadata?['avatar_url'] as String?;
+
+    Widget profileIcon(bool selected) {
+      if (avatarUrl != null) {
+        return Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: selected ? AppColors.primary : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: ClipOval(
+            child: Image.network(
+              avatarUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Icon(
+                selected ? Icons.person_rounded : Icons.person_outline_rounded,
+                color: selected ? AppColors.primary : null,
+              ),
+            ),
+          ),
+        );
+      }
+      return Icon(
+        selected ? Icons.person_rounded : Icons.person_outline_rounded,
+        color: selected ? AppColors.primary : null,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         border: Border(top: BorderSide(
@@ -40,7 +76,7 @@ class _BottomNav extends StatelessWidget {
         )),
       ),
       child: NavigationBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: Colors.black,
         indicatorColor: AppColors.primary.withValues(alpha: 0.15),
         selectedIndex: currentIndex,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -57,27 +93,26 @@ class _BottomNav extends StatelessWidget {
               context.go('/profile');
           }
         },
-        destinations: const [
-          NavigationDestination(
+        destinations: [
+          const NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home_rounded, color: AppColors.primary),
             label: 'Home',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.search_outlined),
             selectedIcon: Icon(Icons.search_rounded, color: AppColors.primary),
             label: 'Search',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.bookmark_border_rounded),
             selectedIcon:
                 Icon(Icons.bookmark_rounded, color: AppColors.primary),
             label: 'Lists',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon:
-                Icon(Icons.person_rounded, color: AppColors.primary),
+            icon: profileIcon(false),
+            selectedIcon: profileIcon(true),
             label: 'Profile',
           ),
         ],
