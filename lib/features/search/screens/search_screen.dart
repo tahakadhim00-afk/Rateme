@@ -134,8 +134,8 @@ class _BrowseView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final genres = ref.watch(genresProvider);
-    final genreResults = selectedGenre != null
-        ? ref.watch(discoverByGenreProvider(selectedGenre!))
+    final genreState = selectedGenre != null
+        ? ref.watch(genreMoviesProvider(selectedGenre!))
         : null;
 
     return SingleChildScrollView(
@@ -159,32 +159,58 @@ class _BrowseView extends ConsumerWidget {
                   ref.read(selectedGenreProvider.notifier).state = id,
             ),
           ),
-          if (selectedGenre != null && genreResults != null) ...[
+          if (selectedGenre != null && genreState != null) ...[
             const SizedBox(height: 24),
-            genreResults.when(
-              data: (movies) => GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: 0.58,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 16,
-                ),
-                itemCount: movies.length,
-                itemBuilder: (ctx, i) {
-                  final movie = movies[i];
-                  return MovieCard(
-                    movie: movie,
-                    width: double.infinity,
-                    onTap: () => ctx.push(
-                        movie.mediaType == 'tv'
-                            ? '/tv/${movie.id}'
-                            : '/movie/${movie.id}'),
-                  );
-                },
+            genreState.when(
+              data: (state) => Column(
+                children: [
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      childAspectRatio: 0.58,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 16,
+                    ),
+                    itemCount: state.movies.length,
+                    itemBuilder: (ctx, i) {
+                      final movie = state.movies[i];
+                      return MovieCard(
+                        movie: movie,
+                        width: double.infinity,
+                        onTap: () => ctx.push(
+                            movie.mediaType == 'tv'
+                                ? '/tv/${movie.id}'
+                                : '/movie/${movie.id}'),
+                      );
+                    },
+                  ),
+                  if (state.hasMore) ...[
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: state.isLoadingMore
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          : SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () => ref
+                                    .read(genreMoviesProvider(selectedGenre!).notifier)
+                                    .loadMore(),
+                                child: const Text('Load More'),
+                              ),
+                            ),
+                    ),
+                  ],
+                ],
               ),
               loading: () => const _ShimmerGrid(
                 padding: EdgeInsets.symmetric(horizontal: 20),
