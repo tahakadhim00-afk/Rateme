@@ -85,6 +85,96 @@ final discoverByGenreProvider =
   return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
+// Paginated genre discover
+class GenreMoviesState {
+  final List<Movie> movies;
+  final int currentPage;
+  final bool isLoadingMore;
+  final bool hasMore;
+
+  const GenreMoviesState({
+    this.movies = const [],
+    this.currentPage = 0,
+    this.isLoadingMore = false,
+    this.hasMore = true,
+  });
+
+  GenreMoviesState copyWith({
+    List<Movie>? movies,
+    int? currentPage,
+    bool? isLoadingMore,
+    bool? hasMore,
+  }) =>
+      GenreMoviesState(
+        movies: movies ?? this.movies,
+        currentPage: currentPage ?? this.currentPage,
+        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+        hasMore: hasMore ?? this.hasMore,
+      );
+}
+
+class GenreMoviesNotifier extends StateNotifier<AsyncValue<GenreMoviesState>> {
+  final Ref _ref;
+  final int genreId;
+
+  GenreMoviesNotifier(this._ref, this.genreId)
+      : super(const AsyncValue.loading()) {
+    _loadPage(1);
+  }
+
+  Future<void> _loadPage(int page) async {
+    try {
+      final service = _ref.read(tmdbServiceProvider);
+      final raw = await service.discoverByGenre(genreId, page: page);
+      final fresh =
+          raw.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
+
+      state = state.when(
+        data: (s) => AsyncValue.data(s.copyWith(
+          movies: [...s.movies, ...fresh],
+          currentPage: page,
+          isLoadingMore: false,
+          hasMore: fresh.length >= 20,
+        )),
+        loading: () => AsyncValue.data(GenreMoviesState(
+          movies: fresh,
+          currentPage: page,
+          isLoadingMore: false,
+          hasMore: fresh.length >= 20,
+        )),
+        error: (e2, st2) => AsyncValue.data(GenreMoviesState(
+          movies: fresh,
+          currentPage: page,
+          isLoadingMore: false,
+          hasMore: fresh.length >= 20,
+        )),
+      );
+    } catch (e, st) {
+      if (state is AsyncLoading) {
+        state = AsyncValue.error(e, st);
+      } else {
+        state = state.when(
+          data: (s) => AsyncValue.data(s.copyWith(isLoadingMore: false)),
+          loading: () => AsyncValue.error(e, st),
+          error: (e2, st2) => AsyncValue.error(e, st),
+        );
+      }
+    }
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null || current.isLoadingMore || !current.hasMore) return;
+    state = AsyncValue.data(current.copyWith(isLoadingMore: true));
+    await _loadPage(current.currentPage + 1);
+  }
+}
+
+final genreMoviesProvider = StateNotifierProvider.family<GenreMoviesNotifier,
+    AsyncValue<GenreMoviesState>, int>((ref, genreId) {
+  return GenreMoviesNotifier(ref, genreId);
+});
+
 // ── TV Shows ──────────────────────────────────────────────────────────────
 
 final trendingTvProvider = FutureProvider<List<Movie>>((ref) async {
