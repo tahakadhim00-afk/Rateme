@@ -9,6 +9,7 @@ import '../../features/tv_detail/screens/tv_season_screen.dart';
 import '../../features/actor/screens/actor_profile_screen.dart';
 import '../../features/auth/screens/sign_in_screen.dart';
 import '../../features/home/screens/see_all_screen.dart';
+import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../core/services/supabase_service.dart';
 import 'main_scaffold.dart';
 
@@ -29,6 +30,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/signin',
       builder: (ctx, state) => const SignInScreen(),
+    ),
+    GoRoute(
+      path: '/onboarding',
+      builder: (ctx, state) => const OnboardingScreen(),
     ),
     ShellRoute(
       builder: (context, state, child) => MainScaffold(child: child),

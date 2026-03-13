@@ -4,12 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/notification_provider.dart';
+import '../../../core/providers/preferences_provider.dart';
 import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/models/movie.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/featured_banner.dart';
 import '../widgets/movie_row.dart';
+
+/// In-memory flag — true once onboarding has been shown this session.
+/// Resets on every cold start, which is exactly what the dev-mode flow needs.
+final _onboardingShownProvider = StateProvider<bool>((ref) => false);
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +26,26 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkOnboarding());
+  }
+
+  Future<void> _checkOnboarding() async {
+    if (!mounted) return;
+    final isSignedIn = ref.read(isSignedInProvider);
+    if (!isSignedIn) return;
+    // Guard: only redirect once per session so returning from onboarding
+    // doesn't trigger an infinite loop.
+    final alreadyShown = ref.read(_onboardingShownProvider);
+    if (alreadyShown) return;
+    ref.read(_onboardingShownProvider.notifier).state = true;
+    // TODO: remove this line before release — forces onboarding on every launch
+    if (mounted) context.go('/onboarding');
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -28,6 +54,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _refresh() async {
     ref.invalidate(trendingMoviesProvider);
+    ref.invalidate(userPreferencesProvider);
     ref.invalidate(popularMoviesProvider);
     ref.invalidate(topRatedProvider);
 
@@ -51,6 +78,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final topRatedTv = ref.watch(topRatedTvProvider);
 
     final notifCount = ref.watch(unreadNotifCountProvider);
+    final shownPrefs = ref
+            .watch(userPreferencesProvider)
+            .valueOrNull
+            ?.take(3)
+            .toList() ??
+        [];
 
     final slivers = <Widget>[
       _buildAppBar(context, notifCount),
@@ -175,6 +208,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           loading: () =>
               const MovieRow(title: 'Top Rated TV Shows', isLoading: true),
           error: (e, _) => const SizedBox.shrink(),
+        ),
+      ),
+
+      // ── Personalised rows ("Because you like…") ───────────────────────────
+      ...shownPrefs.map(
+        (pref) => SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 30),
+            child: _PersonalisedRow(pref: pref),
+          ),
         ),
       ),
 
@@ -503,6 +546,35 @@ class _NotifTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Icon(Icons.movie_rounded, size: 18, color: colors.textMuted),
+    );
+  }
+}
+
+// ── Personalised row ─────────────────────────────────────────────────────────
+
+class _PersonalisedRow extends ConsumerWidget {
+  final dynamic pref; // PersonPreference
+
+  const _PersonalisedRow({required this.pref});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final moviesAsync = ref.watch(personMoviesProvider(pref));
+    final label = pref.personType == 'director'
+        ? 'Films by ${pref.personName}'
+        : 'Because you like ${pref.personName}';
+
+    return moviesAsync.when(
+      loading: () => MovieRow(title: label, isLoading: true),
+      error: (e, s) => const SizedBox.shrink(),
+      data: (movies) {
+        if (movies.isEmpty) return const SizedBox.shrink();
+        return MovieRow(
+          title: label,
+          movies: movies,
+          onMovieTap: (m) => context.push('/movie/${m.id}'),
+        );
+      },
     );
   }
 }

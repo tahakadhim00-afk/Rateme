@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_list_item.dart';
+import '../models/person_preference.dart';
 
 class SupabaseService {
   static SupabaseClient get client => Supabase.instance.client;
@@ -23,6 +24,21 @@ class SupabaseService {
 
   Future<void> signOut() async {
     await client.auth.signOut();
+  }
+
+  Future<void> deleteAccount() async {
+    final user = currentUser;
+    if (user == null) return;
+
+    try {
+      // Calls the SECURITY DEFINER function which deletes user_lists rows
+      // and the auth.users record in one transaction.
+      await client.rpc('delete_user');
+    } finally {
+      // Always sign out locally so the app reflects the deleted state,
+      // even if the RPC partially failed.
+      await client.auth.signOut();
+    }
   }
 
   // ── User Lists ────────────────────────────────────────────────────────────
@@ -94,6 +110,49 @@ class SupabaseService {
         .update({'genre_ids': genreIds})
         .eq('user_id', user.id)
         .eq('media_id', mediaId);
+  }
+
+  // ── User Preferences (onboarding) ─────────────────────────────────────────
+
+  Future<List<PersonPreference>> fetchPreferences() async {
+    final user = currentUser;
+    if (user == null) return [];
+
+    final data = await client
+        .from('user_preferences')
+        .select()
+        .eq('user_id', user.id)
+        .order('added_at');
+
+    return (data as List)
+        .map((row) => PersonPreference.fromJson(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> savePreferences(List<PersonPreference> prefs) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    final rows = prefs
+        .map((p) => {
+              'user_id': user.id,
+              ...p.toJson(),
+            })
+        .toList();
+
+    await client
+        .from('user_preferences')
+        .upsert(rows, onConflict: 'user_id,person_id,person_type');
+  }
+
+  Future<void> clearPreferences() async {
+    final user = currentUser;
+    if (user == null) return;
+
+    await client
+        .from('user_preferences')
+        .delete()
+        .eq('user_id', user.id);
   }
 }
 
