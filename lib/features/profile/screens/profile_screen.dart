@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/movie.dart';
@@ -589,9 +590,115 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ],
 
-              // Watch time box
+              // Watch time breakdown
               if (totalMins > 0) ...[
                 const SizedBox(height: 16),
+                // Films + TV time side by side
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: colors.border.withValues(alpha: 0.5), width: 0.5),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: const Icon(Icons.movie_rounded,
+                                  size: 15, color: AppColors.primary),
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Films',
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  movieMins > 0 ? fmtTime(movieMins) : '—',
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: colors.border.withValues(alpha: 0.5), width: 0.5),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: const Icon(Icons.tv_rounded,
+                                  size: 15, color: AppColors.primary),
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'TV Shows',
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  tvMins > 0 ? fmtTime(tvMins) : '—',
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Total time full-width
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
@@ -755,36 +862,6 @@ class ProfileScreen extends ConsumerWidget {
       builder: (_) => _CoverPickerSheet(parentRef: ref),
     );
   }
-
-  void _showAbout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        final colors = AppThemeColors.of(ctx);
-        return AlertDialog(
-          backgroundColor: colors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Image.asset('assets/logo_and_images/app_bar.png', width: 36, height: 36),
-              const SizedBox(width: 12),
-              Text('RateMe', style: TextStyle(color: colors.textPrimary)),
-            ],
-          ),
-          content: Text(
-            'RateMe is the first Iraqi app dedicated to rating movies and TV shows. Powered by TMDb.',
-            style: TextStyle(color: colors.textSecondary, height: 1.6),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close', style: TextStyle(color: AppColors.primary)),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
 
 // ── Supporting widgets ────────────────────────────────────────────────────────
@@ -880,7 +957,7 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
                   labelColor: AppColors.primary,
                   onTap: () => context.go('/signin'),
                 )
-              else
+              else ...[
                 _SettingRow(
                   icon: Icons.logout_rounded,
                   iconBg: AppColors.error,
@@ -892,6 +969,15 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
                     if (context.mounted) context.go('/signin');
                   },
                 ),
+                Divider(height: 1, color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4)),
+                _SettingRow(
+                  icon: Icons.delete_forever_rounded,
+                  iconBg: AppColors.error,
+                  label: 'Delete Account',
+                  labelColor: AppColors.error,
+                  onTap: () => _showDeleteAccountDialog(context),
+                ),
+              ],
             ],
           ),
         ),
@@ -930,6 +1016,70 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
         );
       },
     );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete Account',
+          style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'This will permanently delete your account and all your data (ratings, watchlists, favorites). This action cannot be undone.',
+          style: TextStyle(color: colors.textSecondary, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _deleteAccount();
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount() async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    try {
+      // Clear local SharedPreferences data for this user
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('profile_cover_url_${user.id}');
+      await prefs.remove('custom_lists_v1_${user.id}');
+
+      // Clear in-memory list state
+      ref.read(listsProvider.notifier).clearAll();
+
+      // Delete account and all DB data
+      await ref.read(authNotifierProvider.notifier).deleteAccount();
+
+      if (mounted) context.go('/signin');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete account: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 }
 
