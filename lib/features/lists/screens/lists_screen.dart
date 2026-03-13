@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/models/custom_list.dart';
 import '../../../core/models/user_list_item.dart';
 import '../../../core/providers/custom_lists_provider.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/lists_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -63,7 +64,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
               controller: _tabController,
               tabs: [
                 _TabData(Icons.check_circle_rounded, 'Watched'),
-                _TabData(Icons.bookmark_rounded, 'Saved'),
+                _TabData(Icons.bookmark_rounded, 'Watch Later'),
                 _TabData(Icons.list_rounded, 'My Lists'),
               ],
             ),
@@ -79,7 +80,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
                     items: watched,
                     isLoading: isLoading,
                     listType: ListType.watched,
-                    emptyIcon: Icons.check_circle_outline_rounded,
+                    emptyImagePath: 'assets/placeholders/watched.png',
                     emptyMessage: 'Nothing watched yet',
                     emptySubMessage: 'Mark films as watched to track them here',
                     notifier: notifier,
@@ -88,7 +89,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
                     items: watchLater,
                     isLoading: isLoading,
                     listType: ListType.watchLater,
-                    emptyIcon: Icons.bookmark_border_rounded,
+                    emptyImagePath: 'assets/placeholders/watch_later.png',
                     emptyMessage: 'Watch later is empty',
                     emptySubMessage: 'Save films and shows to watch them later',
                     notifier: notifier,
@@ -108,6 +109,21 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
   }
 
   void _showCreateListSheet(BuildContext context) {
+    final isLoggedIn = ref.read(isSignedInProvider);
+    if (!isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Sign in to create lists',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -140,36 +156,24 @@ class _Header extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Title row
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Collection',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const Text(
+            'Collection',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _StatChip(Icons.check_circle_rounded, '$watchedCount', 'watched'),
               const SizedBox(width: 8),
-              _StatChip(Icons.bookmark_rounded, '$watchLaterCount', 'saved'),
+              _StatChip(Icons.bookmark_rounded, '$watchLaterCount', 'watch later'),
               const SizedBox(width: 8),
               _StatChip(Icons.list_rounded, '$customListsCount', 'lists'),
             ],
@@ -264,16 +268,7 @@ class _YellowTabBar extends StatelessWidget {
     );
   }
 
-  Widget _buildTab(_TabData t) => Tab(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(t.icon, size: 14),
-            const SizedBox(width: 5),
-            Text(t.label),
-          ],
-        ),
-      );
+  Widget _buildTab(_TabData t) => Tab(text: t.label);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -298,14 +293,14 @@ class _MyListsTab extends ConsumerWidget {
         children: [
           Expanded(
             child: _EmptyState(
-              icon: Icons.list_alt_rounded,
+              imagePath: 'assets/placeholders/mylists.png',
               message: 'No custom lists yet',
               subMessage: 'Create a list to organize your collection',
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            child: _CreateButton(onTap: onCreateList),
+            child: Center(child: _CreateButton(onTap: onCreateList)),
           ),
         ],
       );
@@ -433,7 +428,7 @@ class _MyListsTab extends ConsumerWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: _CreateButton(onTap: onCreateList),
+          child: Center(child: _CreateButton(onTap: onCreateList)),
         ),
       ],
     );
@@ -889,7 +884,6 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
                 // In list
                 list.items.isEmpty
                     ? _EmptyState(
-                        icon: Icons.movie_outlined,
                         message: 'List is empty',
                         subMessage: 'Add titles from the "Add Titles" tab',
                       )
@@ -914,7 +908,6 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
                 // Add titles
                 available.isEmpty
                     ? _EmptyState(
-                        icon: Icons.check_circle_rounded,
                         message: 'All titles added',
                         subMessage: 'All your watched/saved titles are in this list',
                       )
@@ -1132,23 +1125,22 @@ class _CreateButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.add_rounded, color: Colors.black, size: 22),
-            SizedBox(width: 8),
+            Icon(Icons.add_rounded, color: Colors.black, size: 18),
+            SizedBox(width: 6),
             Text(
               'Create New List',
               style: TextStyle(
                 color: Colors.black,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -1166,7 +1158,7 @@ class _GridTab extends StatelessWidget {
   final List<UserListItem> items;
   final bool isLoading;
   final ListType listType;
-  final IconData emptyIcon;
+  final String emptyImagePath;
   final String emptyMessage;
   final String emptySubMessage;
   final ListsNotifier notifier;
@@ -1175,7 +1167,7 @@ class _GridTab extends StatelessWidget {
     required this.items,
     required this.isLoading,
     required this.listType,
-    required this.emptyIcon,
+    required this.emptyImagePath,
     required this.emptyMessage,
     required this.emptySubMessage,
     required this.notifier,
@@ -1206,7 +1198,7 @@ class _GridTab extends StatelessWidget {
 
     if (items.isEmpty) {
       return _EmptyState(
-        icon: emptyIcon,
+        imagePath: emptyImagePath,
         message: emptyMessage,
         subMessage: emptySubMessage,
       );
@@ -1440,12 +1432,12 @@ class _PosterCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  final IconData icon;
+  final String? imagePath;
   final String message;
   final String subMessage;
 
   const _EmptyState({
-    required this.icon,
+    this.imagePath,
     required this.message,
     required this.subMessage,
   });
@@ -1458,30 +1450,8 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Icon with yellow accent ring
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 88,
-                  height: 88,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.15), width: 1),
-                  ),
-                ),
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF111111),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF1E1E1E)),
-                  ),
-                  child: Icon(icon, color: AppColors.primary, size: 32),
-                ),
-              ],
-            ),
+            if (imagePath != null)
+              Image.asset(imagePath!, width: 250, height: 250, fit: BoxFit.contain),
             const SizedBox(height: 20),
             Text(
               message,
