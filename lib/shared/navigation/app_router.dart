@@ -42,12 +42,12 @@ final appRouter = GoRouter(
           pageBuilder: (ctx, state) => const NoTransitionPage(child: SearchScreen()),
         ),
         GoRoute(
-          path: '/lists',
-          pageBuilder: (ctx, state) => const NoTransitionPage(child: ListsScreen()),
-        ),
-        GoRoute(
           path: '/profile',
           pageBuilder: (ctx, state) => const NoTransitionPage(child: ProfileScreen()),
+        ),
+        GoRoute(
+          path: '/lists',
+          builder: (ctx, state) => const ListsScreen(),
         ),
       ],
     ),

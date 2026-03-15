@@ -12,8 +12,7 @@ class MainScaffold extends StatelessWidget {
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/search')) return 1;
-    if (location.startsWith('/lists')) return 2;
-    if (location.startsWith('/profile')) return 3;
+    if (location.startsWith('/profile')) return 2;
     return 0;
   }
 
@@ -88,8 +87,6 @@ class _BottomNav extends ConsumerWidget {
             case 1:
               context.go('/search');
             case 2:
-              context.go('/lists');
-            case 3:
               context.go('/profile');
           }
         },
@@ -103,12 +100,6 @@ class _BottomNav extends ConsumerWidget {
             icon: Icon(Icons.search_outlined),
             selectedIcon: Icon(Icons.search_rounded, color: AppColors.primary),
             label: 'Search',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.bookmark_border_rounded),
-            selectedIcon:
-                Icon(Icons.bookmark_rounded, color: AppColors.primary),
-            label: 'Lists',
           ),
           NavigationDestination(
             icon: profileIcon(false),
