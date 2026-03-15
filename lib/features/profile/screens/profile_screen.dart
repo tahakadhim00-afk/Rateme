@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/movie.dart';
@@ -18,11 +17,16 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../shared/widgets/google_sign_in_button.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  Widget build(BuildContext context) {
     final watched = ref.watch(watchedProvider);
     final watchLater = ref.watch(watchLaterProvider);
     final isLoading = ref.watch(listsLoadingProvider);
@@ -71,7 +75,7 @@ class ProfileScreen extends ConsumerWidget {
           isSignedIn
               ? CustomScrollView(
                   slivers: [
-                    // ── Cinematic Header ─────────────────────────────────────────
+                    // ── Cinematic Header ──────────────────────────────────────
                     SliverToBoxAdapter(
                       child: _buildHeader(
                         context: context,
@@ -86,7 +90,15 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    // ── Stats ────────────────────────────────────────────────────
+                    // ── Lists button ──────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                        child: _ListsButton(colors: colors),
+                      ),
+                    ),
+
+                    // ── Stats ─────────────────────────────────────────────────
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
@@ -103,7 +115,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    // ── Genre Chart ───────────────────────────────────────────────
+                    // ── Genre Chart ───────────────────────────────────────────
                     if (!isLoading && watched.isNotEmpty)
                       SliverToBoxAdapter(
                         child: Padding(
@@ -120,7 +132,7 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ),
 
-                    // ── Settings ─────────────────────────────────────────────────
+                    // ── Settings ──────────────────────────────────────────────
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
@@ -864,6 +876,214 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
+// ── Lists Button ──────────────────────────────────────────────────────────────
+
+class _ListsButton extends StatelessWidget {
+  final AppThemeColors colors;
+  const _ListsButton({required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/lists'),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: colors.card.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors.border.withValues(alpha: 0.5), width: 0.5),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.bookmark_rounded, size: 18, color: AppColors.primary),
+                ),
+                const SizedBox(width: 14),
+                Text(
+                  'Lists',
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                Icon(Icons.chevron_right_rounded, color: colors.textMuted, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Account Button ────────────────────────────────────────────────────────────
+
+// ── Account Sheet ─────────────────────────────────────────────────────────────
+
+class _AccountSheet extends ConsumerStatefulWidget {
+  const _AccountSheet();
+
+  @override
+  ConsumerState<_AccountSheet> createState() => _AccountSheetState();
+}
+
+class _AccountSheetState extends ConsumerState<_AccountSheet> {
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Account',
+              style: TextStyle(color: colors.textPrimary, fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 20),
+            _SettingRow(
+              icon: Icons.logout_rounded,
+              iconBg: AppColors.error,
+              label: 'Sign Out',
+              labelColor: AppColors.error,
+              onTap: () async {
+                Navigator.pop(context);
+                await ref.read(authNotifierProvider.notifier).signOut();
+                ref.read(listsProvider.notifier).clearAll();
+                if (context.mounted) context.go('/signin');
+              },
+            ),
+            Divider(height: 1, color: colors.border.withValues(alpha: 0.4)),
+            _SettingRow(
+              icon: Icons.delete_forever_rounded,
+              iconBg: AppColors.error,
+              label: 'Delete Account',
+              labelColor: AppColors.error,
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteAccountDialog(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          backgroundColor: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppColors.primary, width: 1.5),
+          ),
+          title: Text('Delete Account', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This will permanently delete your account and all your data (ratings, watchlists, favorites). This action cannot be undone.',
+                style: TextStyle(color: colors.textSecondary, height: 1.6),
+              ),
+              const SizedBox(height: 16),
+              Text('Type "Rate Me" to confirm:', style: TextStyle(color: colors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                style: TextStyle(color: colors.textPrimary),
+                cursorColor: AppColors.error,
+                decoration: InputDecoration(
+                  hintText: 'Rate Me',
+                  hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.4)),
+                  filled: true,
+                  fillColor: colors.card,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.error, width: 1.5)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: ctrl.text == 'Rate Me'
+                  ? () async {
+                      Navigator.pop(ctx);
+                      await _deleteAccount();
+                    }
+                  : null,
+              child: Text(
+                'Delete',
+                style: TextStyle(
+                  color: ctrl.text == 'Rate Me' ? AppColors.error : colors.textSecondary.withValues(alpha: 0.3),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount() async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    try {
+      ref.read(listsProvider.notifier).clearAll();
+      await ref.read(authNotifierProvider.notifier).deleteAccount();
+      if (mounted) context.go('/signin');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete account: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+}
+
 // ── Supporting widgets ────────────────────────────────────────────────────────
 
 class _SettingsCard extends ConsumerStatefulWidget {
@@ -958,24 +1178,18 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
                   onTap: () => context.go('/signin'),
                 )
               else ...[
+                Divider(height: 1, color: colors.border.withValues(alpha: 0.4)),
                 _SettingRow(
-                  icon: Icons.logout_rounded,
-                  iconBg: AppColors.error,
-                  label: 'Sign Out',
-                  labelColor: AppColors.error,
-                  onTap: () async {
-                    await ref.read(authNotifierProvider.notifier).signOut();
-                    ref.read(listsProvider.notifier).clearAll();
-                    if (context.mounted) context.go('/signin');
-                  },
-                ),
-                Divider(height: 1, color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4)),
-                _SettingRow(
-                  icon: Icons.delete_forever_rounded,
-                  iconBg: AppColors.error,
-                  label: 'Delete Account',
-                  labelColor: AppColors.error,
-                  onTap: () => _showDeleteAccountDialog(context),
+                  icon: Icons.manage_accounts_rounded,
+                  iconBg: AppColors.primary,
+                  iconColor: Colors.black,
+                  label: 'Account',
+                  onTap: () => showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const _AccountSheet(),
+                  ),
                 ),
               ],
             ],
@@ -1018,114 +1232,6 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
-    final colors = AppThemeColors.of(context);
-    final ctrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          backgroundColor: colors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: AppColors.primary, width: 1.5),
-          ),
-          title: Text(
-            'Delete Account',
-            style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'This will permanently delete your account and all your data (ratings, watchlists, favorites). This action cannot be undone.',
-                style: TextStyle(color: colors.textSecondary, height: 1.6),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Type "Rate Me" to confirm:',
-                style: TextStyle(color: colors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: ctrl,
-                autofocus: true,
-                style: TextStyle(color: colors.textPrimary),
-                cursorColor: AppColors.error,
-                decoration: InputDecoration(
-                  hintText: 'Rate Me',
-                  hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.4)),
-                  filled: true,
-                  fillColor: colors.card,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
-            ),
-            TextButton(
-              onPressed: ctrl.text == 'Rate Me'
-                  ? () async {
-                      Navigator.pop(ctx);
-                      await _deleteAccount();
-                    }
-                  : null,
-              child: Text(
-                'Delete',
-                style: TextStyle(
-                  color: ctrl.text == 'Rate Me' ? AppColors.error : colors.textSecondary.withValues(alpha: 0.3),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _deleteAccount() async {
-    final user = ref.read(currentUserProvider);
-    if (user == null) return;
-
-    try {
-      // Clear local SharedPreferences data for this user
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('profile_cover_url_${user.id}');
-      await prefs.remove('custom_lists_v1_${user.id}');
-
-      // Clear in-memory list state
-      ref.read(listsProvider.notifier).clearAll();
-
-      // Delete account and all DB data
-      await ref.read(authNotifierProvider.notifier).deleteAccount();
-
-      if (mounted) context.go('/signin');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete account: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
 }
 
 class _StatItem extends StatelessWidget {

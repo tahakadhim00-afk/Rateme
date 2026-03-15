@@ -137,6 +137,114 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Lists Tab View (embeddable – used by ProfileScreen)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class ListsTabView extends ConsumerStatefulWidget {
+  const ListsTabView({super.key});
+
+  @override
+  ConsumerState<ListsTabView> createState() => _ListsTabViewState();
+}
+
+class _ListsTabViewState extends ConsumerState<ListsTabView>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final watched = ref.watch(watchedProvider);
+    final watchLater = ref.watch(watchLaterProvider);
+    final customLists = ref.watch(customListsProvider);
+    final isLoading = ref.watch(listsLoadingProvider);
+    final notifier = ref.read(listsProvider.notifier);
+
+    return Column(
+      children: [
+        _YellowTabBar(
+          controller: _tabController,
+          tabs: [
+            _TabData(Icons.check_circle_rounded, 'Watched'),
+            _TabData(Icons.bookmark_rounded, 'Watch Later'),
+            _TabData(Icons.list_rounded, 'My Lists'),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _GridTab(
+                items: watched,
+                isLoading: isLoading,
+                listType: ListType.watched,
+                emptyImagePath: 'assets/placeholders/watched.png',
+                emptyMessage: 'Nothing watched yet',
+                emptySubMessage: 'Mark films as watched to track them here',
+                notifier: notifier,
+              ),
+              _GridTab(
+                items: watchLater,
+                isLoading: isLoading,
+                listType: ListType.watchLater,
+                emptyImagePath: 'assets/placeholders/watch_later.png',
+                emptyMessage: 'Watch later is empty',
+                emptySubMessage: 'Save films and shows to watch them later',
+                notifier: notifier,
+              ),
+              _MyListsTab(
+                customLists: customLists,
+                allItems: [...watched, ...watchLater],
+                onCreateList: () => _showCreateListSheet(context),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showCreateListSheet(BuildContext context) {
+    final isLoggedIn = ref.read(isSignedInProvider);
+    if (!isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Sign in to create lists',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CreateListSheet(
+        onCreated: (name) =>
+            ref.read(customListsProvider.notifier).createList(name),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Header
 // ─────────────────────────────────────────────────────────────────────────────
 
