@@ -1020,35 +1020,80 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
 
   void _showDeleteAccountDialog(BuildContext context) {
     final colors = AppThemeColors.of(context);
+    final ctrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: colors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Delete Account',
-          style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'This will permanently delete your account and all your data (ratings, watchlists, favorites). This action cannot be undone.',
-          style: TextStyle(color: colors.textSecondary, height: 1.6),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          backgroundColor: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await _deleteAccount();
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+          title: Text(
+            'Delete Account',
+            style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This will permanently delete your account and all your data (ratings, watchlists, favorites). This action cannot be undone.',
+                style: TextStyle(color: colors.textSecondary, height: 1.6),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Type "Rate Me" to confirm:',
+                style: TextStyle(color: colors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                style: TextStyle(color: colors.textPrimary),
+                cursorColor: AppColors.error,
+                decoration: InputDecoration(
+                  hintText: 'Rate Me',
+                  hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.4)),
+                  filled: true,
+                  fillColor: colors.card,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
             ),
-          ),
-        ],
+            TextButton(
+              onPressed: ctrl.text == 'Rate Me'
+                  ? () async {
+                      Navigator.pop(ctx);
+                      await _deleteAccount();
+                    }
+                  : null,
+              child: Text(
+                'Delete',
+                style: TextStyle(
+                  color: ctrl.text == 'Rate Me' ? AppColors.error : colors.textSecondary.withValues(alpha: 0.3),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

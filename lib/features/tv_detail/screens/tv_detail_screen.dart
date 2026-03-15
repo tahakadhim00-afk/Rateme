@@ -500,7 +500,9 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
               listNotifier.toggleWatched(_tvAsMovie,
                   runtime: tv.episodeRunTime.isNotEmpty
                       ? tv.numberOfEpisodes * tv.episodeRunTime.first
-                      : null,
+                      : tv.lastEpisodeRuntime != null
+                          ? tv.numberOfEpisodes * tv.lastEpisodeRuntime!
+                          : null,
                   genreIds: tv.genres.map((g) => g.id).toList());
             },
           ),
@@ -562,7 +564,9 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
                     userRating: r * 2,
                     runtime: tv.episodeRunTime.isNotEmpty
                         ? tv.numberOfEpisodes * tv.episodeRunTime.first
-                        : null,
+                        : tv.lastEpisodeRuntime != null
+                            ? tv.numberOfEpisodes * tv.lastEpisodeRuntime!
+                            : null,
                     genreIds: tv.genres.map((g) => g.id).toList(),
                   );
                 }

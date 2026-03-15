@@ -139,6 +139,7 @@ class TvDetail {
   final int numberOfSeasons;
   final int numberOfEpisodes;
   final List<int> episodeRunTime;
+  final int? lastEpisodeRuntime; // from last_episode_to_air.runtime (fallback)
   final String? status;
   final List<Genre> genres;
   final List<Cast> cast;
@@ -159,6 +160,7 @@ class TvDetail {
     this.numberOfSeasons = 0,
     this.numberOfEpisodes = 0,
     this.episodeRunTime = const [],
+    this.lastEpisodeRuntime,
     this.status,
     this.genres = const [],
     this.cast = const [],
@@ -184,6 +186,9 @@ class TvDetail {
               ?.map((e) => e as int)
               .toList() ??
           [],
+      lastEpisodeRuntime:
+          (json['last_episode_to_air'] as Map<String, dynamic>?)?['runtime']
+              as int?,
       status: json['status'] as String?,
       genres: (json['genres'] as List<dynamic>?)
               ?.map((e) => Genre.fromJson(e as Map<String, dynamic>))

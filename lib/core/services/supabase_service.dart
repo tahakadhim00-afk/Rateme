@@ -1,7 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_list_item.dart';
-import '../models/person_preference.dart';
-
 class SupabaseService {
   static SupabaseClient get client => Supabase.instance.client;
 
@@ -112,48 +110,6 @@ class SupabaseService {
         .eq('media_id', mediaId);
   }
 
-  // ── User Preferences (onboarding) ─────────────────────────────────────────
-
-  Future<List<PersonPreference>> fetchPreferences() async {
-    final user = currentUser;
-    if (user == null) return [];
-
-    final data = await client
-        .from('user_preferences')
-        .select()
-        .eq('user_id', user.id)
-        .order('added_at');
-
-    return (data as List)
-        .map((row) => PersonPreference.fromJson(row as Map<String, dynamic>))
-        .toList();
-  }
-
-  Future<void> savePreferences(List<PersonPreference> prefs) async {
-    final user = currentUser;
-    if (user == null) return;
-
-    final rows = prefs
-        .map((p) => {
-              'user_id': user.id,
-              ...p.toJson(),
-            })
-        .toList();
-
-    await client
-        .from('user_preferences')
-        .upsert(rows, onConflict: 'user_id,person_id,person_type');
-  }
-
-  Future<void> clearPreferences() async {
-    final user = currentUser;
-    if (user == null) return;
-
-    await client
-        .from('user_preferences')
-        .delete()
-        .eq('user_id', user.id);
-  }
 }
 
 final supabaseService = SupabaseService();
