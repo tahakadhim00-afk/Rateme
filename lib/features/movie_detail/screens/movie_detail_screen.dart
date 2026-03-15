@@ -884,7 +884,7 @@ class _BoxOfficeCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: colors.surfaceVariant.withValues(alpha: 0.90),
+            color: colors.surfaceVariant.withValues(alpha: 0.50),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: colors.border.withValues(alpha: 0.5), width: 0.5),
           ),

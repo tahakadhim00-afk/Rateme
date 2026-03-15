@@ -41,6 +41,16 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
       state = AsyncValue.error(e, st);
     }
   }
+
+  Future<void> deleteAccount() async {
+    state = const AsyncValue.loading();
+    try {
+      await supabaseService.deleteAccount();
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
 }
 
 final authNotifierProvider =

@@ -4,8 +4,6 @@ import '../models/movie.dart';
 import '../models/movie_detail.dart';
 import '../models/tv_detail.dart';
 import '../models/genre.dart';
-import '../models/person_preference.dart';
-
 class TmdbService {
   late final Dio _dio;
 
@@ -230,47 +228,6 @@ class TmdbService {
         .where((p) => p.isNotEmpty)
         .take(20)
         .toList();
-  }
-
-  // ── People (onboarding + personalization) ─────────────────────────────────
-
-  Future<List<PersonResult>> getPopularPeople({int page = 1}) async {
-    final resp = await _dio.get('/person/popular', queryParameters: {'page': page});
-    final results = resp.data['results'] as List<dynamic>;
-    return results
-        .map((e) => PersonResult.fromJson(e as Map<String, dynamic>))
-        .where((p) => p.hasProfile)
-        .toList();
-  }
-
-  Future<List<PersonResult>> searchPeople(String query) async {
-    if (query.trim().isEmpty) return [];
-    final resp = await _dio.get('/search/person', queryParameters: {'query': query});
-    final results = resp.data['results'] as List<dynamic>;
-    return results
-        .map((e) => PersonResult.fromJson(e as Map<String, dynamic>))
-        .where((p) => p.hasProfile)
-        .toList();
-  }
-
-  Future<List<Movie>> discoverByActor(int personId, {int page = 1}) async {
-    final resp = await _dio.get('/discover/movie', queryParameters: {
-      'with_cast': personId,
-      'page': page,
-      'sort_by': 'popularity.desc',
-    });
-    final results = resp.data['results'] as List<dynamic>;
-    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
-  }
-
-  Future<List<Movie>> discoverByDirector(int personId, {int page = 1}) async {
-    final resp = await _dio.get('/discover/movie', queryParameters: {
-      'with_crew': personId,
-      'page': page,
-      'sort_by': 'popularity.desc',
-    });
-    final results = resp.data['results'] as List<dynamic>;
-    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
   }
 
   // ── Paginated dispatcher (used by infinite-scroll sections) ───────────────
