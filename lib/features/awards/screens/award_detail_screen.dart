@@ -195,6 +195,7 @@ class _AwardDetailScreenState extends ConsumerState<AwardDetailScreen> {
     final name = award?.name ?? 'Awards';
 
     return Scaffold(
+      backgroundColor: colors.background,
       body: RefreshIndicator(
         onRefresh: _refresh,
         color: AppColors.primary,
@@ -202,32 +203,41 @@ class _AwardDetailScreenState extends ConsumerState<AwardDetailScreen> {
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // ── Collapsible header ───────────────────────────────────────
+            // ── Collapsible hero header ──────────────────────────────────
             SliverAppBar(
-              expandedHeight: 160,
+              expandedHeight: 220,
               pinned: true,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              backgroundColor: colors.background,
               scrolledUnderElevation: 0,
-              leading: IconButton(
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: colors.textPrimary, size: 20),
-                onPressed: () => context.pop(),
+              elevation: 0,
+              leading: Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white, size: 16),
+                  onPressed: () => context.pop(),
+                ),
               ),
               title: Text(
                 name,
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 17,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
                 ),
               ),
               flexibleSpace: FlexibleSpaceBar(
                 collapseMode: CollapseMode.parallax,
-                background: _HeaderBanner(award: award, colors: colors),
+                background: _HeaderBanner(award: award),
               ),
             ),
 
-            // ── Year filter bar ───────────────────────────────────────────
+            // ── Year filter bar ──────────────────────────────────────────
             if (_award != null)
               SliverToBoxAdapter(
                 child: _YearFilterBar(
@@ -242,7 +252,8 @@ class _AwardDetailScreenState extends ConsumerState<AwardDetailScreen> {
             if (_movies.isNotEmpty)
               SliverToBoxAdapter(
                 child: _SectionLabel(
-                  label: 'TOP MOVIES  ·  $_activeYear',
+                  label: 'BEST FILMS',
+                  year: _activeYear,
                   icon: Icons.movie_rounded,
                 ),
               ),
@@ -278,14 +289,15 @@ class _AwardDetailScreenState extends ConsumerState<AwardDetailScreen> {
             // ── No results placeholder ────────────────────────────────────
             if (!_loadingMovies && _movies.isEmpty && !_hasMoreMovies)
               SliverToBoxAdapter(
-                child: _EmptyYear(year: _activeYear, colors: colors),
+                child: _EmptyYear(year: _activeYear),
               ),
 
             // ── TV label ─────────────────────────────────────────────────
             if (_tvShows.isNotEmpty)
               SliverToBoxAdapter(
                 child: _SectionLabel(
-                  label: 'TOP TV SHOWS  ·  $_activeYear',
+                  label: 'BEST SERIES',
+                  year: _activeYear,
                   icon: Icons.tv_rounded,
                 ),
               ),
@@ -320,7 +332,8 @@ class _AwardDetailScreenState extends ConsumerState<AwardDetailScreen> {
             if (!_hasMoreMovies && _tvShows.isEmpty && !_loadingTv && _hasMoreTv)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
                   child: OutlinedButton.icon(
                     onPressed: _loadTv,
                     icon: const Icon(Icons.tv_rounded, size: 16),
@@ -355,6 +368,219 @@ class _AwardDetailScreenState extends ConsumerState<AwardDetailScreen> {
   }
 }
 
+// ── Header Banner ─────────────────────────────────────────────────────────────
+
+class _HeaderBanner extends StatelessWidget {
+  final Award? award;
+  const _HeaderBanner({required this.award});
+
+  @override
+  Widget build(BuildContext context) {
+    final a = award;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0D0B08),
+      ),
+      child: Stack(
+        children: [
+          // Background warm gradient
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF1A1508), Color(0xFF0D0B08)],
+                ),
+              ),
+            ),
+          ),
+
+          // Radial glow behind logo
+          Positioned(
+            top: 60,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.18),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Content — centered column
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.of(context).padding.top + 52,
+              20,
+              20,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo
+                if (a != null && a.hasLogo)
+                  _HeaderLogo(award: a)
+                else
+                  const _LogoPlaceholder(),
+
+                const SizedBox(height: 14),
+
+                // Award name
+                Text(
+                  a?.name ?? '',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                const SizedBox(height: 6),
+
+                // Country + date row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (a?.originCountry != null) ...[
+                      Text(
+                        a!.originCountry!,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (a.latestCeremonyDate != null)
+                        Text(
+                          '  ·  ',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                    if (a?.latestCeremonyDate != null)
+                      Text(
+                        _formatDate(a!.latestCeremonyDate!),
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Bottom fade to background
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 32,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    AppColors.background,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String raw) {
+    try {
+      final dt = DateTime.parse(raw);
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+    } catch (_) {
+      return raw;
+    }
+  }
+}
+
+class _HeaderLogo extends StatelessWidget {
+  final Award award;
+  const _HeaderLogo({required this.award});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget img;
+    if (award.hasLocalAsset) {
+      img = Image.asset(
+        award.assetPath!,
+        width: 68,
+        height: 68,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const _LogoPlaceholder(),
+      );
+    } else {
+      img = Image.network(
+        award.logoUrl(size: 'h90')!,
+        width: 68,
+        height: 68,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const _LogoPlaceholder(),
+      );
+    }
+
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Center(child: img),
+    );
+  }
+}
+
+class _LogoPlaceholder extends StatelessWidget {
+  const _LogoPlaceholder();
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Center(
+          child: Text('🏆', style: TextStyle(fontSize: 32)),
+        ),
+      );
+}
+
 // ── Year filter bar ────────────────────────────────────────────────────────────
 
 class _YearFilterBar extends StatelessWidget {
@@ -372,65 +598,157 @@ class _YearFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppThemeColors.of(context);
     return Container(
       height: 52,
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: colors.border.withValues(alpha: 0.4),
+            color: AppColors.border.withValues(alpha: 0.3),
             width: 0.5,
           ),
         ),
       ),
-      child: ListView.separated(
-        controller: scrollController,
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: years.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final year = years[i];
-          final isSelected = year == selectedYear;
-          return GestureDetector(
-            onTap: () => onYearSelected(year),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      child: Stack(
+        children: [
+          // Scrollable chips
+          ListView.separated(
+            controller: scrollController,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: years.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 6),
+            itemBuilder: (context, i) {
+              final year = years[i];
+              final isSelected = year == selectedYear;
+              return GestureDetector(
+                onTap: () => onYearSelected(year),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary
+                        : const Color(0xFF1A1814),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.transparent
+                          : AppColors.border.withValues(alpha: 0.4),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(
+                    year.toString(),
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.black
+                          : AppColors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: isSelected
+                          ? FontWeight.w800
+                          : FontWeight.w500,
+                      letterSpacing: isSelected ? 0.3 : 0,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Left fade
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 16,
+            child: Container(
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary
-                    : colors.surfaceVariant,
-                borderRadius: BorderRadius.circular(20),
-                border: isSelected
-                    ? null
-                    : Border.all(
-                        color: colors.border.withValues(alpha: 0.5),
-                        width: 0.5,
-                      ),
-              ),
-              child: Text(
-                year.toString(),
-                style: TextStyle(
-                  color: isSelected ? Colors.black : colors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                gradient: LinearGradient(
+                  colors: [AppColors.background, Colors.transparent],
                 ),
               ),
             ),
-          );
-        },
+          ),
+          // Right fade
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.transparent, AppColors.background],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── Empty state for a year with no results ────────────────────────────────────
+// ── Section Label ──────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  final int year;
+  final IconData icon;
+  const _SectionLabel({
+    required this.label,
+    required this.year,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 4),
+      child: Row(
+        children: [
+          Container(
+            width: 2,
+            height: 14,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.primary, AppColors.primaryDark],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '·  $year',
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Empty year state ───────────────────────────────────────────────────────────
 
 class _EmptyYear extends StatelessWidget {
   final int year;
-  final AppThemeColors colors;
-  const _EmptyYear({required this.year, required this.colors});
+  const _EmptyYear({required this.year});
 
   @override
   Widget build(BuildContext context) {
@@ -438,163 +756,36 @@ class _EmptyYear extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 32),
       child: Column(
         children: [
-          Icon(Icons.movie_filter_outlined,
-              size: 40, color: colors.textMuted.withValues(alpha: 0.5)),
-          const SizedBox(height: 12),
-          Text(
-            'No results for $year',
-            style: TextStyle(
-              color: colors.textMuted,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Header banner ─────────────────────────────────────────────────────────────
-
-class _HeaderBanner extends StatelessWidget {
-  final Award? award;
-  final AppThemeColors colors;
-  const _HeaderBanner({required this.award, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    final a = award;
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary.withValues(alpha: 0.12),
-            AppColors.primary.withValues(alpha: 0.03),
-          ],
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.primary.withValues(alpha: 0.2),
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 72, 20, 16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (a != null && a.hasLogo)
-              SizedBox(
-                width: 64,
-                height: 64,
-                child: a.hasLocalAsset
-                    ? Image.asset(
-                        a.assetPath!,
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => const _LogoPlaceholder(),
-                      )
-                    : Image.network(
-                        a.logoUrl(size: 'h90')!,
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => const _LogoPlaceholder(),
-                      ),
-              )
-            else
-              const _LogoPlaceholder(),
-
-            const SizedBox(width: 16),
-
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    a?.name ?? '',
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      height: 1.2,
-                    ),
-                  ),
-                  if (a?.latestCeremonyDate != null) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today_outlined,
-                            size: 11, color: colors.textMuted),
-                        const SizedBox(width: 4),
-                        Text(
-                          a!.latestCeremonyDate!,
-                          style: TextStyle(
-                              color: colors.textMuted, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (a?.originCountry != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      a!.originCountry!,
-                      style: TextStyle(color: colors.textMuted, fontSize: 11),
-                    ),
-                  ],
-                ],
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primary.withValues(alpha: 0.06),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                width: 1,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LogoPlaceholder extends StatelessWidget {
-  const _LogoPlaceholder();
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(child: Text('🏆', style: TextStyle(fontSize: 28))),
-      );
-}
-
-// ── Section label ─────────────────────────────────────────────────────────────
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  const _SectionLabel({required this.label, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary, size: 13),
-          const SizedBox(width: 6),
+            child: const Center(
+              child: Text('🎬', style: TextStyle(fontSize: 22)),
+            ),
+          ),
+          const SizedBox(height: 14),
           Text(
-            label,
+            'No results for $year',
             style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Try a different year',
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 13,
             ),
           ),
         ],
@@ -603,16 +794,15 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-// ── Skeleton ──────────────────────────────────────────────────────────────────
+// ── Skeleton Grid ──────────────────────────────────────────────────────────────
 
 class _SkeletonGrid extends StatelessWidget {
   const _SkeletonGrid();
   @override
   Widget build(BuildContext context) {
-    final colors = AppThemeColors.of(context);
     return Shimmer.fromColors(
-      baseColor: colors.surfaceVariant,
-      highlightColor: colors.card,
+      baseColor: const Color(0xFF1A1810),
+      highlightColor: const Color(0xFF2A2418),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -626,7 +816,7 @@ class _SkeletonGrid extends StatelessWidget {
         itemCount: 12,
         itemBuilder: (_, _) => Container(
           decoration: BoxDecoration(
-            color: colors.surfaceVariant,
+            color: const Color(0xFF1A1810),
             borderRadius: BorderRadius.circular(12),
           ),
         ),
