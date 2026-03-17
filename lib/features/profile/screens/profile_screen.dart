@@ -24,7 +24,31 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animCtrl;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
+    _animCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final watched = ref.watch(watchedProvider);
@@ -43,7 +67,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final movies = watched.where((e) => e.mediaType == 'movie').toList();
     final tvShows = watched.where((e) => e.mediaType == 'tv').toList();
-
     final ratings = watched.where((e) => e.userRating != null).toList();
     final avgRating = ratings.isEmpty
         ? null
@@ -55,101 +78,92 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       backgroundColor: colors.background,
       body: Stack(
         children: [
-          // ── Blurry cover background ────────────────────────────────────────
           if (coverUrl != null) ...[
             Positioned.fill(
               child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                child: CachedNetworkImage(
-                  imageUrl: coverUrl,
-                  fit: BoxFit.cover,
-                ),
+                imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                child: CachedNetworkImage(imageUrl: coverUrl, fit: BoxFit.cover),
               ),
             ),
             Positioned.fill(
-              child: Container(color: colors.background.withValues(alpha: 0.75)),
+              child: Container(color: colors.background.withValues(alpha: 0.84)),
             ),
           ],
-
-          // ── Content ───────────────────────────────────────────────────────
           isSignedIn
-              ? CustomScrollView(
-                  slivers: [
-                    // ── Cinematic Header ──────────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: _buildHeader(
-                        context: context,
-                        ref: ref,
-                        coverUrl: coverUrl,
-                        avatarUrl: avatarUrl,
-                        displayName: displayName,
-                        email: email,
-                        isSignedIn: isSignedIn,
-                        authLoading: authState.isLoading,
-                        colors: colors,
-                      ),
-                    ),
-
-                    // ── Lists button ──────────────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                        child: _ListsButton(colors: colors),
-                      ),
-                    ),
-
-                    // ── Stats ─────────────────────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                        child: isLoading
-                            ? _shimmerBox(context, 220)
-                            : _buildStatsSection(
-                                context,
-                                watched.length,
-                                watchLater.length,
-                                avgRating,
-                                movies,
-                                tvShows,
-                              ),
-                      ),
-                    ),
-
-                    // ── Genre Chart ───────────────────────────────────────────
-                    if (!isLoading && watched.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                          child: _buildGenreChart(context, watched),
+              ? FadeTransition(
+                  opacity: _fadeAnim,
+                  child: SlideTransition(
+                    position: _slideAnim,
+                    child: CustomScrollView(
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: _buildHeader(
+                            context: context,
+                            ref: ref,
+                            coverUrl: coverUrl,
+                            avatarUrl: avatarUrl,
+                            displayName: displayName,
+                            email: email,
+                            isSignedIn: isSignedIn,
+                            authLoading: authState.isLoading,
+                            colors: colors,
+                          ),
                         ),
-                      ),
-
-                    if (isLoading)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                          child: _shimmerBox(context, 200),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                            child: _CollectionButton(
+                              watchedCount: watched.length,
+                              watchLaterCount: watchLater.length,
+                              colors: colors,
+                            ),
+                          ),
                         ),
-                      ),
-
-                    // ── Settings ──────────────────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-                        child: _SettingsCard(isSignedIn: isSignedIn),
-                      ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                            child: isLoading
+                                ? _shimmerBox(context, 260)
+                                : _buildStatsSection(
+                                    context,
+                                    watched.length,
+                                    watchLater.length,
+                                    avgRating,
+                                    movies,
+                                    tvShows,
+                                  ),
+                          ),
+                        ),
+                        if (!isLoading && watched.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                              child: _buildGenreChart(context, watched),
+                            ),
+                          ),
+                        if (isLoading)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                              child: _shimmerBox(context, 200),
+                            ),
+                          ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                            child: _SettingsCard(isSignedIn: isSignedIn),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 48)),
+                      ],
                     ),
-
-                    const SliverToBoxAdapter(child: SizedBox(height: 48)),
-                  ],
+                  ),
                 )
               : _buildGuestView(context, ref, authState.isLoading, colors),
         ],
       ),
     );
   }
-
-  // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildGuestView(
     BuildContext context,
@@ -164,19 +178,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(height: 80),
-            Image.asset(
-              'assets/logo_and_images/app_bar.png',
-              width: 72,
-              height: 72,
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+                color: AppColors.primary.withValues(alpha: 0.07),
+              ),
+              child: Center(
+                child: Image.asset(
+                  'assets/logo_and_images/app_bar.png',
+                  width: 46,
+                  height: 46,
+                ),
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             Text(
               'Your Profile',
               style: TextStyle(
                 color: colors.textPrimary,
-                fontSize: 26,
+                fontSize: 28,
                 fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
+                letterSpacing: -0.8,
               ),
             ),
             const SizedBox(height: 10),
@@ -186,14 +214,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               style: TextStyle(
                 color: colors.textSecondary,
                 fontSize: 14,
-                height: 1.6,
+                height: 1.65,
               ),
             ),
             const SizedBox(height: 36),
             GoogleSignInButton(
               loading: loading,
-              onTap: () =>
-                  ref.read(authNotifierProvider.notifier).signInWithGoogle(),
+              onTap: () => ref.read(authNotifierProvider.notifier).signInWithGoogle(),
             ),
           ],
         ),
@@ -214,57 +241,78 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }) {
     return Column(
       children: [
-        // ── Cover image ──────────────────────────────────────────────────────
         Stack(
           children: [
             GestureDetector(
               onTap: () => _showCoverPicker(context, ref),
               child: SizedBox(
                 width: double.infinity,
-                height: 240,
-                child: coverUrl != null
-                    ? CachedNetworkImage(
+                height: 260,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (coverUrl != null)
+                      CachedNetworkImage(
                         imageUrl: coverUrl,
                         fit: BoxFit.cover,
                         errorWidget: (_, _, _) => _coverFallback(colors),
                       )
-                    : _coverFallback(colors),
-              ),
-            ),
-            // Top gradient for status bar
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 80,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.5),
-                      Colors.transparent,
-                    ],
-                  ),
+                    else
+                      _coverFallback(colors),
+                    // Bottom scrim
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 150,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, colors.background],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Top scrim for status bar
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 80,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.55),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            // Edit cover button
+            // Edit Cover pill
             Positioned(
               top: 52,
               right: 16,
               child: GestureDetector(
                 onTap: () => _showCoverPicker(context, ref),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(20),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.black.withValues(alpha: 0.42),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.15),
                           width: 0.5,
@@ -273,11 +321,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.photo_camera_rounded, color: Colors.white, size: 14),
+                          Icon(Icons.photo_camera_rounded, color: Colors.white, size: 13),
                           SizedBox(width: 5),
                           Text(
-                            'Edit Cover',
-                            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                            'EDIT COVER',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                            ),
                           ),
                         ],
                       ),
@@ -288,21 +341,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ],
         ),
-
-        // ── Avatar + info ────────────────────────────────────────────────────
         Transform.translate(
-          offset: const Offset(0, -48),
+          offset: const Offset(0, -52),
           child: Column(
             children: [
+              // Avatar with gold gradient ring + glow
               Container(
-                width: 96,
-                height: 96,
-                decoration: const BoxDecoration(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: AppColors.primaryGradient,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFE8B84B), Color(0xFFC99A2E)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 24,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(3),
+                  padding: const EdgeInsets.all(2.5),
                   child: ClipOval(
                     child: avatarUrl != null
                         ? Image.network(
@@ -314,25 +378,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Text(
                 displayName,
                 style: TextStyle(
                   color: colors.textPrimary,
-                  fontSize: 22,
+                  fontSize: 24,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
+                  letterSpacing: -0.6,
                 ),
                 textAlign: TextAlign.center,
               ),
               if (email.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
                   email,
                   style: TextStyle(
                     color: colors.textMuted,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
+                    fontSize: 11,
+                    letterSpacing: 0.3,
                   ),
                 ),
               ],
@@ -361,17 +425,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _coverFallback(AppThemeColors colors) => Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [colors.surface, colors.surfaceVariant],
+            colors: [colors.surface, const Color(0xFF111122)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: Center(
-          child: Icon(Icons.image_outlined, size: 40, color: colors.textMuted),
+          child: Icon(
+            Icons.image_outlined,
+            size: 38,
+            color: colors.textMuted.withValues(alpha: 0.3),
+          ),
         ),
       );
 
-  // ── Stats Section (unified) ───────────────────────────────────────────────
+  // ── Stats Section ────────────────────────────────────────────────────────────
 
   Widget _buildStatsSection(
     BuildContext context,
@@ -407,358 +475,286 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: colors.card.withValues(alpha: 0.55),
+            color: colors.card.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-                color: colors.border.withValues(alpha: 0.5), width: 0.5),
+            border: Border.all(color: colors.border.withValues(alpha: 0.6), width: 0.5),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+              // Section header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 3,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                    child: const Icon(Icons.insights_rounded,
-                        size: 16, color: AppColors.primary),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Your Statistics',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: colors.textPrimary,
-                        ),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    const Text(
+                      'YOUR CINEMA',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2.2,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 22),
 
-              // 3 main stats
+              // Hero watched count
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      watchedCount.toString(),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 60,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -4,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        'TITLES\nWATCHED',
+                        style: TextStyle(
+                          color: colors.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.4,
+                          height: 1.6,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Divider(height: 1, color: colors.border.withValues(alpha: 0.5)),
+              ),
+
+              // Sub-stats row
               IntrinsicHeight(
                 child: Row(
                   children: [
                     Expanded(
-                      child: _StatItem(
-                        value: watchedCount.toString(),
-                        label: 'Watched',
-                        icon: Icons.check_circle_rounded,
-                      ),
-                    ),
-                    VerticalDivider(
-                        color: colors.border.withValues(alpha: 0.5),
-                        width: 1),
-                    Expanded(
-                      child: _StatItem(
+                      child: _EditorialStat(
                         value: watchLaterCount.toString(),
-                        label: 'Watchlist',
+                        label: 'WATCHLIST',
                         icon: Icons.bookmark_rounded,
                       ),
                     ),
                     VerticalDivider(
-                        color: colors.border.withValues(alpha: 0.5),
-                        width: 1),
+                      color: colors.border.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
                     Expanded(
-                      child: _StatItem(
-                        value: avgRating != null
-                            ? avgRating.toStringAsFixed(1)
-                            : '—',
-                        label: 'Avg Rating',
+                      child: _EditorialStat(
+                        value: movies.length.toString(),
+                        label: 'FILMS',
+                        icon: Icons.movie_rounded,
+                      ),
+                    ),
+                    VerticalDivider(
+                      color: colors.border.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                    Expanded(
+                      child: _EditorialStat(
+                        value: tvShows.length.toString(),
+                        label: 'TV SHOWS',
+                        icon: Icons.tv_rounded,
+                      ),
+                    ),
+                    VerticalDivider(
+                      color: colors.border.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                    Expanded(
+                      child: _EditorialStat(
+                        value: avgRating != null ? avgRating.toStringAsFixed(1) : '—',
+                        label: 'AVG SCORE',
                         imagePath: 'assets/app_icons/star.png',
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              Divider(
-                  color: colors.border.withValues(alpha: 0.5), height: 1),
-              const SizedBox(height: 20),
 
-              // Films vs TV counts
-              Row(
-                children: [
-                  Expanded(
+              // Film/TV ratio bar
+              if (total > 0) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: AppColors.primaryGradient,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Films ${(movieRatio * 100).round()}%',
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Text(
+                                'TV ${((1 - movieRatio) * 100).round()}%',
+                                style: TextStyle(
+                                  color: colors.textMuted,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.border,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Stack(
+                          children: [
+                            Container(height: 4, color: colors.border),
+                            FractionallySizedBox(
+                              widthFactor: movieRatio,
+                              child: Container(
+                                height: 4,
+                                decoration: const BoxDecoration(
+                                  gradient: AppColors.primaryGradient,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Watch time
+              if (totalMins > 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                        width: 0.5,
+                      ),
+                    ),
                     child: Row(
                       children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.movie_rounded,
-                              size: 16, color: AppColors.primary),
-                        ),
-                        const SizedBox(width: 10),
+                        const Icon(Icons.av_timer_rounded, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              movies.length.toString(),
+                              'TOTAL WATCH TIME',
+                              style: TextStyle(
+                                color: colors.textMuted,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              fmtTime(totalMins),
                               style: const TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 20,
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w700,
                                 letterSpacing: -0.5,
                               ),
                             ),
-                            Text(
-                              'Films',
-                              style: TextStyle(
-                                  color: colors.textSecondary, fontSize: 11),
-                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
+                        const Spacer(),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              tvShows.length.toString(),
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w400,
-                                letterSpacing: -0.5,
+                            if (movieMins > 0)
+                              Row(
+                                children: [
+                                  Text('Films',
+                                      style: TextStyle(
+                                          color: colors.textMuted, fontSize: 10)),
+                                  const SizedBox(width: 5),
+                                  Text(fmtTime(movieMins),
+                                      style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600)),
+                                ],
                               ),
-                            ),
-                            Text(
-                              'TV Shows',
-                              style: TextStyle(
-                                  color: colors.textSecondary, fontSize: 11),
-                            ),
+                            if (tvMins > 0)
+                              Row(
+                                children: [
+                                  Text('TV',
+                                      style: TextStyle(
+                                          color: colors.textMuted, fontSize: 10)),
+                                  const SizedBox(width: 5),
+                                  Text(fmtTime(tvMins),
+                                      style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
                           ],
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.tv_rounded,
-                              size: 16, color: AppColors.primary),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-
-              // Split bar
-              if (total > 0) ...[
-                const SizedBox(height: 14),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Stack(
-                    children: [
-                      Container(
-                        height: 6,
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: movieRatio,
-                        child: Container(
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${(movieRatio * 100).round()}% Films',
-                      style: TextStyle(color: colors.textMuted, fontSize: 10),
-                    ),
-                    Text(
-                      '${((1 - movieRatio) * 100).round()}% TV',
-                      style: TextStyle(color: colors.textMuted, fontSize: 10),
-                    ),
-                  ],
-                ),
-              ],
-
-              // Watch time breakdown
-              if (totalMins > 0) ...[
-                const SizedBox(height: 16),
-                // Films + TV time side by side
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: colors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: colors.border.withValues(alpha: 0.5), width: 0.5),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(9),
-                              ),
-                              child: const Icon(Icons.movie_rounded,
-                                  size: 15, color: AppColors.primary),
-                            ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Films',
-                                  style: TextStyle(
-                                    color: colors.textSecondary,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  movieMins > 0 ? fmtTime(movieMins) : '—',
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w400,
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: colors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: colors.border.withValues(alpha: 0.5), width: 0.5),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(9),
-                              ),
-                              child: const Icon(Icons.tv_rounded,
-                                  size: 15, color: AppColors.primary),
-                            ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'TV Shows',
-                                  style: TextStyle(
-                                    color: colors.textSecondary,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  tvMins > 0 ? fmtTime(tvMins) : '—',
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w400,
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Total time full-width
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: colors.border.withValues(alpha: 0.5), width: 0.5),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.av_timer_rounded,
-                            size: 18, color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Total Watch Time',
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            fmtTime(totalMins),
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w400,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                )
+              else
+                const SizedBox(height: 20),
             ],
           ),
         ),
@@ -766,7 +762,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // ── Genre Chart ───────────────────────────────────────────────────────────
+  // ── Genre Chart ──────────────────────────────────────────────────────────────
 
   Widget _buildGenreChart(BuildContext context, List<UserListItem> watched) {
     final tally = <int, int>{};
@@ -783,15 +779,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final colors = AppThemeColors.of(context);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
           decoration: BoxDecoration(
-            color: colors.card.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: colors.border.withValues(alpha: 0.5), width: 0.5),
+            color: colors.card.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: colors.border.withValues(alpha: 0.6), width: 0.5),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -799,43 +795,109 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Row(
                 children: [
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 3,
+                    height: 14,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    child: const Icon(Icons.bar_chart_rounded, size: 16, color: AppColors.primary),
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    'Genre Breakdown',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: colors.textPrimary,
-                        ),
+                  const Text(
+                    'TASTE PROFILE',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.2,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
-              ...topEntries.map((entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _GenreBar(
-                      name: kGenreNames[entry.key] ?? 'Other',
-                      count: entry.value,
-                      ratio: entry.value / maxCount,
-                    ),
-                  )),
+              ...topEntries.asMap().entries.map((e) {
+                final i = e.key;
+                final genre = e.value;
+                final pct = (genre.value / watched.length * 100).round();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        child: Text(
+                          '${i + 1}',
+                          style: TextStyle(
+                            color: i < 3 ? AppColors.primary : colors.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          kGenreNames[genre.key] ?? 'Other',
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 90,
+                        child: Stack(
+                          children: [
+                            Container(
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color: colors.border,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            FractionallySizedBox(
+                              widthFactor: genre.value / maxCount,
+                              child: Container(
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [AppColors.primary, AppColors.primaryDark],
+                                  ),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 32,
+                        child: Text(
+                          '$pct%',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.end,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
             ],
           ),
         ),
       ),
     );
   }
-
-  // ── Settings Card ─────────────────────────────────────────────────────────
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
 
   Widget _shimmerBox(BuildContext context, double height) {
     final c = AppThemeColors.of(context);
@@ -846,7 +908,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         height: height,
         decoration: BoxDecoration(
           color: c.surfaceVariant,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
         ),
       ),
     );
@@ -876,11 +938,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-// ── Lists Button ──────────────────────────────────────────────────────────────
+// ── Collection Button ──────────────────────────────────────────────────────────
 
-class _ListsButton extends StatelessWidget {
+class _CollectionButton extends StatelessWidget {
+  final int watchedCount;
+  final int watchLaterCount;
   final AppThemeColors colors;
-  const _ListsButton({required this.colors});
+
+  const _CollectionButton({
+    required this.watchedCount,
+    required this.watchLaterCount,
+    required this.colors,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -893,31 +962,78 @@ class _ListsButton extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: colors.card.withValues(alpha: 0.55),
+              color: colors.card.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colors.border.withValues(alpha: 0.5), width: 0.5),
+              border: Border.all(
+                color: colors.border.withValues(alpha: 0.6),
+                width: 0.5,
+              ),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE8B84B), Color(0xFFC99A2E)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.bookmark_rounded, size: 18, color: AppColors.primary),
+                  child: const Icon(
+                    Icons.collections_bookmark_rounded,
+                    size: 20,
+                    color: Colors.black,
+                  ),
                 ),
                 const SizedBox(width: 14),
-                Text(
-                  'Lists',
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'MY COLLECTION',
+                        style: TextStyle(
+                          color: colors.textMuted,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Lists, Watchlist & Favorites',
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(
+                    '$watchedCount',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Icon(Icons.chevron_right_rounded, color: colors.textMuted, size: 20),
               ],
             ),
@@ -927,8 +1043,6 @@ class _ListsButton extends StatelessWidget {
     );
   }
 }
-
-// ── Account Button ────────────────────────────────────────────────────────────
 
 // ── Account Sheet ─────────────────────────────────────────────────────────────
 
@@ -967,7 +1081,11 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
             const SizedBox(height: 20),
             Text(
               'Account',
-              style: TextStyle(color: colors.textPrimary, fontSize: 18, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 20),
             _SettingRow(
@@ -1011,7 +1129,10 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
             borderRadius: BorderRadius.circular(20),
             side: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
-          title: Text('Delete Account', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+          title: Text(
+            'Delete Account',
+            style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1021,7 +1142,14 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
                 style: TextStyle(color: colors.textSecondary, height: 1.6),
               ),
               const SizedBox(height: 16),
-              Text('Type "Rate Me" to confirm:', style: TextStyle(color: colors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(
+                'Type "Rate Me" to confirm:',
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
               TextField(
                 controller: ctrl,
@@ -1030,12 +1158,21 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
                 cursorColor: AppColors.error,
                 decoration: InputDecoration(
                   hintText: 'Rate Me',
-                  hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.4)),
+                  hintStyle: TextStyle(
+                    color: colors.textSecondary.withValues(alpha: 0.4),
+                  ),
                   filled: true,
                   fillColor: colors.card,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.error, width: 1.5)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
                 onChanged: (_) => setState(() {}),
               ),
@@ -1056,7 +1193,9 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
               child: Text(
                 'Delete',
                 style: TextStyle(
-                  color: ctrl.text == 'Rate Me' ? AppColors.error : colors.textSecondary.withValues(alpha: 0.3),
+                  color: ctrl.text == 'Rate Me'
+                      ? AppColors.error
+                      : colors.textSecondary.withValues(alpha: 0.3),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1077,14 +1216,17 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete account: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Failed to delete account: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
   }
 }
 
-// ── Supporting widgets ────────────────────────────────────────────────────────
+// ── Settings Card ─────────────────────────────────────────────────────────────
 
 class _SettingsCard extends ConsumerStatefulWidget {
   final bool isSignedIn;
@@ -1114,10 +1256,12 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: colors.card.withValues(alpha: 0.55),
+            color: colors.card.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-                color: colors.border.withValues(alpha: 0.5), width: 0.5),
+              color: colors.border.withValues(alpha: 0.6),
+              width: 0.5,
+            ),
           ),
           child: Column(
             children: [
@@ -1128,10 +1272,8 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
                 onTap: () => _showAbout(context),
               ),
               Divider(height: 1, color: colors.border.withValues(alpha: 0.4)),
-              // Daily reminder toggle
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
                     Container(
@@ -1141,8 +1283,11 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
                         color: const Color(0xFF30D158).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.notifications_rounded,
-                          size: 18, color: Color(0xFF30D158)),
+                      child: const Icon(
+                        Icons.notifications_rounded,
+                        size: 18,
+                        color: Color(0xFF30D158),
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1206,12 +1351,10 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
         final colors = AppThemeColors.of(ctx);
         return AlertDialog(
           backgroundColor: colors.surface,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
-              Image.asset('assets/logo_and_images/app_bar.png',
-                  width: 36, height: 36),
+              Image.asset('assets/logo_and_images/app_bar.png', width: 36, height: 36),
               const SizedBox(width: 12),
               Text('RateMe', style: TextStyle(color: colors.textPrimary)),
             ],
@@ -1231,16 +1374,17 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
       },
     );
   }
-
 }
 
-class _StatItem extends StatelessWidget {
+// ── Editorial Stat ─────────────────────────────────────────────────────────────
+
+class _EditorialStat extends StatelessWidget {
   final String value;
   final String label;
   final IconData? icon;
   final String? imagePath;
 
-  const _StatItem({
+  const _EditorialStat({
     required this.value,
     required this.label,
     this.icon,
@@ -1250,100 +1394,43 @@ class _StatItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppThemeColors.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (imagePath != null)
-          Image.asset(imagePath!, width: 18, height: 18, color: AppColors.primary)
-        else
-          Icon(icon, color: AppColors.primary, size: 18),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.primary,
-            fontSize: 24,
-            fontWeight: FontWeight.w400,
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: TextStyle(
-            color: colors.textSecondary,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-}
-
-class _GenreBar extends StatelessWidget {
-  final String name;
-  final int count;
-  final double ratio;
-
-  const _GenreBar({required this.name, required this.count, required this.ratio});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppThemeColors.of(context);
-    return Row(
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            name,
-            style: TextStyle(color: colors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Stack(
-            children: [
-              Container(
-                height: 7,
-                decoration: BoxDecoration(
-                  color: colors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              FractionallySizedBox(
-                widthFactor: ratio,
-                child: Container(
-                  height: 7,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 20,
-          child: Text(
-            count.toString(),
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 11,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (imagePath != null)
+            Image.asset(imagePath!, width: 13, height: 13, color: AppColors.primary)
+          else
+            Icon(icon, color: AppColors.primary, size: 13),
+          const SizedBox(height: 7),
+          Text(
+            value,
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 22,
               fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
             ),
-            textAlign: TextAlign.end,
           ),
-        ),
-      ],
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: colors.textMuted,
+              fontSize: 8,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }
+
+// ── Setting Row ───────────────────────────────────────────────────────────────
 
 class _SettingRow extends StatelessWidget {
   final IconData icon;
@@ -1447,7 +1534,8 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
       _backdrops = [];
     });
     try {
-      final paths = await ref.read(tmdbServiceProvider).getBackdrops(movie.id, movie.mediaType);
+      final paths =
+          await ref.read(tmdbServiceProvider).getBackdrops(movie.id, movie.mediaType);
       setState(() => _backdrops = paths);
     } catch (_) {
     } finally {
@@ -1476,7 +1564,10 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
             width: 40,
             height: 4,
             margin: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(color: colors.border, borderRadius: BorderRadius.circular(2)),
+            decoration: BoxDecoration(
+              color: colors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 8, 12),
@@ -1495,8 +1586,14 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
                   const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _showingBackdrops ? (_selectedMovie?.title ?? 'Pick a backdrop') : 'Choose Cover',
-                    style: TextStyle(color: colors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                    _showingBackdrops
+                        ? (_selectedMovie?.title ?? 'Pick a backdrop')
+                        : 'Choose Cover',
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1529,7 +1626,8 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
             ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary))
                 : _showingBackdrops
                     ? _buildBackdropGrid(colors)
                     : _buildSearchResults(colors),
@@ -1543,7 +1641,9 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
     if (_results.isEmpty) {
       return Center(
         child: Text(
-          _searchCtrl.text.isEmpty ? 'Search for a title to pick a cover' : 'No results found',
+          _searchCtrl.text.isEmpty
+              ? 'Search for a title to pick a cover'
+              : 'No results found',
           style: TextStyle(color: colors.textMuted),
           textAlign: TextAlign.center,
         ),
@@ -1559,7 +1659,10 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
             borderRadius: BorderRadius.circular(6),
             child: movie.posterPath != null
                 ? CachedNetworkImage(
-                    imageUrl: AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterW342),
+                    imageUrl: AppConstants.posterUrl(
+                      movie.posterPath!,
+                      size: AppConstants.posterW342,
+                    ),
                     width: 40,
                     height: 60,
                     fit: BoxFit.cover,
@@ -1567,12 +1670,18 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
                   )
                 : _posterFallback(colors),
           ),
-          title: Text(movie.title,
-              style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
+          title: Text(
+            movie.title,
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           subtitle: Text(
-            '${movie.mediaType == 'tv' ? 'TV Show' : 'Movie'}${movie.year.isNotEmpty ? ' · ${movie.year}' : ''}',
+            '${movie.mediaType == 'tv' ? 'TV Show' : 'Movie'}'
+            '${movie.year.isNotEmpty ? ' · ${movie.year}' : ''}',
             style: TextStyle(color: colors.textMuted, fontSize: 12),
           ),
           trailing: Icon(Icons.chevron_right_rounded, color: colors.textMuted),
@@ -1585,7 +1694,10 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
   Widget _posterFallback(AppThemeColors colors) => Container(
         width: 40,
         height: 60,
-        decoration: BoxDecoration(color: colors.surfaceVariant, borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(
+          color: colors.surfaceVariant,
+          borderRadius: BorderRadius.circular(6),
+        ),
         child: Icon(Icons.movie_rounded, size: 20, color: colors.textMuted),
       );
 
@@ -1609,7 +1721,8 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
       ),
       itemCount: _backdrops.length,
       itemBuilder: (context, i) {
-        final url = AppConstants.backdropUrl(_backdrops[i], size: AppConstants.backdropW780);
+        final url =
+            AppConstants.backdropUrl(_backdrops[i], size: AppConstants.backdropW780);
         return GestureDetector(
           onTap: () => _pickBackdrop(_backdrops[i]),
           child: ClipRRect(

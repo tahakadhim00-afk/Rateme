@@ -24,6 +24,7 @@ dependencies:
   # Images
   cached_network_image: ^3.4.1
   palette_generator: ^0.3.3
+  flutter_svg: ^2.0.10+1
 
   # Fonts
   google_fonts: ^6.2.1
@@ -62,6 +63,7 @@ flutter:
     - assets/logo_and_images/
     - assets/app_icons/
     - assets/placeholders/
+    - assets/awards/
 
   fonts:
     - family: Poppins
