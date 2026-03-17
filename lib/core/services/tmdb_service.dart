@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../constants/app_constants.dart';
+import '../models/award.dart';
 import '../models/movie.dart';
 import '../models/movie_detail.dart';
 import '../models/tv_detail.dart';
@@ -230,6 +231,79 @@ class TmdbService {
         .toList();
   }
 
+  // ── Awards list (TMDB /3/award) ───────────────────────────────────────────
+
+  Future<List<Award>> getAwards({int page = 1}) async {
+    final resp = await _dio.get('/award', queryParameters: {
+      'language': 'en-US',
+      'page': page,
+    });
+    final results = resp.data['results'] as List<dynamic>? ?? [];
+    return results
+        .map((e) => Award.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // ── Award winners (discover by year) ─────────────────────────────────────
+
+  /// Fetch critically acclaimed titles from [eligibleYear] — used as the
+  /// "winners" list for a given award ceremony.
+  Future<List<Movie>> getAwardWinners({
+    required int eligibleYear,
+    required String mediaType, // 'movie', 'tv', or 'both'
+    int page = 1,
+  }) async {
+    if (mediaType == 'tv') {
+      final resp = await _dio.get('/discover/tv', queryParameters: {
+        'sort_by': 'vote_average.desc',
+        'vote_average.gte': 7.5,
+        'vote_count.gte': 100,
+        'first_air_date_year': eligibleYear,
+        'page': page,
+      });
+      final results = resp.data['results'] as List<dynamic>;
+      return _clean(results
+          .map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv'))
+          .toList());
+    } else {
+      final resp = await _dio.get('/discover/movie', queryParameters: {
+        'sort_by': 'vote_average.desc',
+        'vote_average.gte': 7.5,
+        'vote_count.gte': 200,
+        'primary_release_year': eligibleYear,
+        'page': page,
+      });
+      final results = resp.data['results'] as List<dynamic>;
+      return _clean(results
+          .map((e) => Movie.fromJson(e as Map<String, dynamic>))
+          .toList());
+    }
+  }
+
+  Future<List<Movie>> getAwardMovies({int page = 1}) async {
+    final resp = await _dio.get('/discover/movie', queryParameters: {
+      'sort_by': 'vote_average.desc',
+      'vote_count.gte': 1000,
+      'vote_average.gte': 7.5,
+      'with_keywords': '10537|10714|10533', // oscar-winning | golden globe | bafta
+      'page': page,
+    });
+    final results = resp.data['results'] as List<dynamic>;
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
+  }
+
+  Future<List<Movie>> getAwardTvShows({int page = 1}) async {
+    final resp = await _dio.get('/discover/tv', queryParameters: {
+      'sort_by': 'vote_average.desc',
+      'vote_count.gte': 500,
+      'vote_average.gte': 7.5,
+      'with_keywords': '10537|10714|10533',
+      'page': page,
+    });
+    final results = resp.data['results'] as List<dynamic>;
+    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList());
+  }
+
   // ── Paginated dispatcher (used by infinite-scroll sections) ───────────────
 
   Future<List<Movie>> getPage(String category, int page) async {
@@ -252,6 +326,10 @@ class TmdbService {
         return getTrending();
       case 'trending_tv':
         return getTrendingTv();
+      case 'award_movies':
+        return getAwardMovies(page: page);
+      case 'award_tv':
+        return getAwardTvShows(page: page);
       default:
         return [];
     }

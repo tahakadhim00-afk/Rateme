@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/award.dart';
 import '../models/movie.dart';
 import '../models/movie_detail.dart';
 import '../models/tv_detail.dart';
@@ -173,6 +174,21 @@ class GenreMoviesNotifier extends StateNotifier<AsyncValue<GenreMoviesState>> {
 final genreMoviesProvider = StateNotifierProvider.family<GenreMoviesNotifier,
     AsyncValue<GenreMoviesState>, int>((ref, genreId) {
   return GenreMoviesNotifier(ref, genreId);
+});
+
+// Awards list — uses curated static data with real TMDB IDs & logos.
+final awardsListProvider = FutureProvider<List<Award>>((ref) async {
+  return kTmdbAwards;
+});
+
+// Award-winning movies (oscar/golden globe keyword + high vote_average)
+final awardMoviesProvider = FutureProvider<List<Movie>>((ref) async {
+  return ref.watch(tmdbServiceProvider).getAwardMovies();
+});
+
+// Award-winning TV shows
+final awardTvShowsProvider = FutureProvider<List<Movie>>((ref) async {
+  return ref.watch(tmdbServiceProvider).getAwardTvShows();
 });
 
 // ── TV Shows ──────────────────────────────────────────────────────────────

@@ -1,6 +1,8 @@
 import 'package:go_router/go_router.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/search/screens/search_screen.dart';
+import '../../features/awards/screens/awards_screen.dart';
+import '../../features/awards/screens/award_detail_screen.dart';
 import '../../features/lists/screens/lists_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/movie_detail/screens/movie_detail_screen.dart';
@@ -42,6 +44,10 @@ final appRouter = GoRouter(
           pageBuilder: (ctx, state) => const NoTransitionPage(child: SearchScreen()),
         ),
         GoRoute(
+          path: '/awards',
+          pageBuilder: (ctx, state) => const NoTransitionPage(child: AwardsScreen()),
+        ),
+        GoRoute(
           path: '/profile',
           pageBuilder: (ctx, state) => const NoTransitionPage(child: ProfileScreen()),
         ),
@@ -78,6 +84,13 @@ final appRouter = GoRouter(
       builder: (ctx, state) {
         final id = int.parse(state.pathParameters['id']!);
         return ActorProfileScreen(actorId: id);
+      },
+    ),
+    GoRoute(
+      path: '/award/:awardId',
+      builder: (ctx, state) {
+        final awardId = int.parse(state.pathParameters['awardId']!);
+        return AwardDetailScreen(awardId: awardId);
       },
     ),
     GoRoute(
