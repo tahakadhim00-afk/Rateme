@@ -18,6 +18,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/rating_badge.dart';
 import '../../../shared/widgets/movie_card.dart';
 import '../widgets/share_rating_sheet.dart';
+import '../widgets/recommend_share_sheet.dart';
 
 class MovieDetailScreen extends ConsumerWidget {
   final int movieId;
@@ -684,8 +685,8 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         children: [
           _RoundActionBtn(
             icon: isWatched
-                ? Icons.check_circle_rounded
-                : Icons.check_circle_outline_rounded,
+                ? Icons.visibility
+                : Icons.visibility_outlined,
             label: 'Watched',
             active: isWatched,
             activeColor: AppColors.success,
@@ -702,8 +703,8 @@ class _DetailViewState extends ConsumerState<_DetailView> {
           const SizedBox(width: 12),
           _RoundActionBtn(
             icon: isWatchLater
-                ? Icons.bookmark_rounded
-                : Icons.bookmark_border_rounded,
+                ? Icons.access_time_rounded
+                : Icons.access_time_outlined,
             label: 'Watch Later',
             active: isWatchLater,
             activeColor: AppColors.primary,
@@ -714,6 +715,14 @@ class _DetailViewState extends ConsumerState<_DetailView> {
               }
               listNotifier.toggleWatchLater(movieAsMovie);
             },
+          ),
+          const SizedBox(width: 12),
+          _RoundActionBtn(
+            icon: Icons.thumb_up_rounded,
+            label: 'Recommend',
+            active: false,
+            activeColor: AppColors.warning,
+            onTap: () => _shareRecommendation(context, movie),
           ),
         ],
       ),
@@ -834,6 +843,28 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         year: movie.year,
         posterUrl: posterUrl,
         rating: _userRating,
+        username: username,
+      ),
+    );
+  }
+
+  void _shareRecommendation(BuildContext context, MovieDetail movie) {
+    final posterUrl = movie.hasPoster
+        ? AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterW500)
+        : movie.hasBackdrop
+            ? AppConstants.backdropUrl(movie.backdropPath!)
+            : null;
+    final user = ref.read(currentUserProvider);
+    final username = (user?.userMetadata?['full_name'] as String?) ??
+        user?.email?.split('@').first;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RecommendShareSheet(
+        title: movie.title,
+        year: movie.year,
+        posterUrl: posterUrl,
         username: username,
       ),
     );
