@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -502,115 +503,203 @@ class _Top10Tile extends StatelessWidget {
         ? (kGenreNames[movie.genreIds.first] ?? '')
         : '';
 
+    final inner = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: rank == 1
+            ? null
+            : Border.all(color: colors.border, width: 0.5),
+      ),
+      child: Row(
+        children: [
+          // Rank number
+          SizedBox(
+            width: 34,
+            child: Text(
+              '$rank',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: rank == 1
+                    ? 34
+                    : rank <= 3
+                        ? 30
+                        : 24,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                height: 1,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Thumbnail
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: movie.hasPoster
+                ? CachedNetworkImage(
+                    imageUrl: AppConstants.posterUrl(movie.posterPath!),
+                    width: 44,
+                    height: 62,
+                    fit: BoxFit.cover,
+                  )
+                : Container(
+                    width: 44,
+                    height: 62,
+                    color: colors.surfaceVariant,
+                    child: Icon(Icons.movie_outlined,
+                        color: colors.textMuted, size: 18),
+                  ),
+          ),
+          const SizedBox(width: 12),
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  movie.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    const Icon(Icons.star_rounded,
+                        color: AppColors.primary, size: 13),
+                    const SizedBox(width: 4),
+                    Text(
+                      movie.ratingFormatted,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (genreName.isNotEmpty) ...[
+                      Text(' • ',
+                          style:
+                              TextStyle(color: colors.textMuted, fontSize: 12)),
+                      Text(
+                        genreName,
+                        style: TextStyle(
+                            color: colors.textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Trend icon
+          Icon(
+            rank <= 5 ? Icons.trending_up_rounded : Icons.remove_rounded,
+            color: rank <= 5 ? const Color(0xFF4CAF50) : colors.textMuted,
+            size: 20,
+          ),
+        ],
+      ),
+    );
+
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: colors.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.border, width: 0.5),
-        ),
-        child: Row(
-          children: [
-            // Rank number
-            SizedBox(
-              width: 34,
-              child: Text(
-                '$rank',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: rank == 1
-                      ? 34
-                      : rank <= 3
-                          ? 30
-                          : 24,
-                  fontWeight: FontWeight.w900,
-                  fontStyle: FontStyle.italic,
-                  height: 1,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            // Thumbnail
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: movie.hasPoster
-                  ? CachedNetworkImage(
-                      imageUrl: AppConstants.posterUrl(movie.posterPath!),
-                      width: 44,
-                      height: 62,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      width: 44,
-                      height: 62,
-                      color: colors.surfaceVariant,
-                      child: Icon(Icons.movie_outlined,
-                          color: colors.textMuted, size: 18),
-                    ),
-            ),
-            const SizedBox(width: 12),
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    movie.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded,
-                          color: AppColors.primary, size: 13),
-                      const SizedBox(width: 4),
-                      Text(
-                        movie.ratingFormatted,
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (genreName.isNotEmpty) ...[
-                        Text(' • ',
-                            style: TextStyle(
-                                color: colors.textMuted, fontSize: 12)),
-                        Text(
-                          genreName,
-                          style: TextStyle(
-                              color: colors.textSecondary, fontSize: 12),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Trend icon
-            Icon(
-              rank <= 5
-                  ? Icons.trending_up_rounded
-                  : Icons.remove_rounded,
-              color: rank <= 5
-                  ? const Color(0xFF4CAF50)
-                  : colors.textMuted,
-              size: 20,
-            ),
-          ],
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+        child: rank == 1
+            ? _AnimatedGoldenBorder(borderRadius: 16, child: inner)
+            : inner,
       ),
     );
   }
+}
+
+// ── Animated Golden Border ────────────────────────────────────────────────────
+
+class _AnimatedGoldenBorder extends StatefulWidget {
+  final Widget child;
+  final double borderRadius;
+
+  const _AnimatedGoldenBorder({
+    required this.child,
+    required this.borderRadius,
+  });
+
+  @override
+  State<_AnimatedGoldenBorder> createState() => _AnimatedGoldenBorderState();
+}
+
+class _AnimatedGoldenBorderState extends State<_AnimatedGoldenBorder>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, child) => CustomPaint(
+        foregroundPainter: _GoldenBorderPainter(
+          progress: _controller.value,
+          borderRadius: widget.borderRadius,
+        ),
+        child: child,
+      ),
+      child: widget.child,
+    );
+  }
+}
+
+class _GoldenBorderPainter extends CustomPainter {
+  final double progress;
+  final double borderRadius;
+
+  const _GoldenBorderPainter({
+    required this.progress,
+    required this.borderRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final rRect = RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..shader = SweepGradient(
+        colors: const [
+          Colors.transparent,
+          Color(0xFFFFD700),
+          Color(0xFFFFF4A0),
+          Color(0xFFFFD700),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+        transform: GradientRotation(2 * math.pi * progress),
+      ).createShader(rect);
+    canvas.drawRRect(rRect, paint);
+  }
+
+  @override
+  bool shouldRepaint(_GoldenBorderPainter old) => old.progress != progress;
 }
 
 // ── Search Results ────────────────────────────────────────────────────────────

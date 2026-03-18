@@ -16,6 +16,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/rating_badge.dart';
 import '../../../shared/widgets/movie_card.dart';
 import '../../movie_detail/widgets/share_rating_sheet.dart';
+import '../../movie_detail/widgets/recommend_share_sheet.dart';
 
 class TvDetailScreen extends ConsumerWidget {
   final int tvId;
@@ -487,8 +488,8 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
         children: [
           _RoundActionBtn(
             icon: isWatched
-                ? Icons.check_circle_rounded
-                : Icons.check_circle_outline_rounded,
+                ? Icons.visibility
+                : Icons.visibility_outlined,
             label: 'Watched',
             active: isWatched,
             activeColor: AppColors.success,
@@ -509,8 +510,8 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
           const SizedBox(width: 12),
           _RoundActionBtn(
             icon: isWatchLater
-                ? Icons.bookmark_rounded
-                : Icons.bookmark_border_rounded,
+                ? Icons.access_time_rounded
+                : Icons.access_time_outlined,
             label: 'Watch Later',
             active: isWatchLater,
             activeColor: AppColors.primary,
@@ -521,6 +522,14 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
               }
               listNotifier.toggleWatchLater(_tvAsMovie);
             },
+          ),
+          const SizedBox(width: 12),
+          _RoundActionBtn(
+            icon: Icons.thumb_up_rounded,
+            label: 'Recommend',
+            active: false,
+            activeColor: AppColors.warning,
+            onTap: () => _shareRecommendation(context, tv),
           ),
         ],
       ),
@@ -651,6 +660,28 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
         year: tv.year,
         posterUrl: posterUrl,
         rating: _userRating,
+        username: username,
+      ),
+    );
+  }
+
+  void _shareRecommendation(BuildContext context, TvDetail tv) {
+    final posterUrl = tv.posterPath != null
+        ? AppConstants.posterUrl(tv.posterPath!, size: AppConstants.posterW500)
+        : tv.backdropPath != null
+            ? AppConstants.backdropUrl(tv.backdropPath!)
+            : null;
+    final user = ref.read(currentUserProvider);
+    final username = (user?.userMetadata?['full_name'] as String?) ??
+        user?.email?.split('@').first;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RecommendShareSheet(
+        title: tv.title,
+        year: tv.year,
+        posterUrl: posterUrl,
         username: username,
       ),
     );
