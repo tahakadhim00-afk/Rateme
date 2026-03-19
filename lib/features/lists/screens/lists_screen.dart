@@ -10,6 +10,7 @@ import '../../../core/providers/custom_lists_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/lists_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/google_sign_in_button.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lists Screen
@@ -40,6 +41,8 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isSignedIn = ref.watch(isSignedInProvider);
+    final authLoading = ref.watch(authNotifierProvider).isLoading;
     final watched = ref.watch(watchedProvider);
     final watchLater = ref.watch(watchLaterProvider);
     final customLists = ref.watch(customListsProvider);
@@ -49,61 +52,66 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ──────────────────────────────────────────────────────
-            _Header(
-              watchedCount: watched.length,
-              watchLaterCount: watchLater.length,
-              customListsCount: customLists.length,
-            ),
-
-            // ── Tab bar ─────────────────────────────────────────────────────
-            _YellowTabBar(
-              controller: _tabController,
-              tabs: [
-                _TabData(Icons.check_circle_rounded, 'Watched'),
-                _TabData(Icons.bookmark_rounded, 'Watch Later'),
-                _TabData(Icons.list_rounded, 'My Lists'),
-              ],
-            ),
-
-            const SizedBox(height: 2),
-
-            // ── Content ─────────────────────────────────────────────────────
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
+        child: !isSignedIn
+            ? _SignInPrompt(loading: authLoading)
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _GridTab(
-                    items: watched,
-                    isLoading: isLoading,
-                    listType: ListType.watched,
-                    emptyImagePath: 'assets/placeholders/watched.png',
-                    emptyMessage: 'Nothing watched yet',
-                    emptySubMessage: 'Mark films as watched to track them here',
-                    notifier: notifier,
+                  // ── Header ────────────────────────────────────────────────
+                  _Header(
+                    watchedCount: watched.length,
+                    watchLaterCount: watchLater.length,
+                    customListsCount: customLists.length,
                   ),
-                  _GridTab(
-                    items: watchLater,
-                    isLoading: isLoading,
-                    listType: ListType.watchLater,
-                    emptyImagePath: 'assets/placeholders/watch_later.png',
-                    emptyMessage: 'Watch later is empty',
-                    emptySubMessage: 'Save films and shows to watch them later',
-                    notifier: notifier,
+
+                  // ── Tab bar ───────────────────────────────────────────────
+                  _YellowTabBar(
+                    controller: _tabController,
+                    tabs: [
+                      _TabData(Icons.check_circle_rounded, 'Watched'),
+                      _TabData(Icons.bookmark_rounded, 'Watch Later'),
+                      _TabData(Icons.list_rounded, 'My Lists'),
+                    ],
                   ),
-                  _MyListsTab(
-                    customLists: customLists,
-                    allItems: [...watched, ...watchLater],
-                    onCreateList: () => _showCreateListSheet(context),
+
+                  const SizedBox(height: 2),
+
+                  // ── Content ───────────────────────────────────────────────
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _GridTab(
+                          items: watched,
+                          isLoading: isLoading,
+                          listType: ListType.watched,
+                          emptyImagePath: 'assets/placeholders/watched.png',
+                          emptyMessage: 'Nothing watched yet',
+                          emptySubMessage:
+                              'Mark films as watched to track them here',
+                          notifier: notifier,
+                        ),
+                        _GridTab(
+                          items: watchLater,
+                          isLoading: isLoading,
+                          listType: ListType.watchLater,
+                          emptyImagePath:
+                              'assets/placeholders/watch_later.png',
+                          emptyMessage: 'Watch later is empty',
+                          emptySubMessage:
+                              'Save films and shows to watch them later',
+                          notifier: notifier,
+                        ),
+                        _MyListsTab(
+                          customLists: customLists,
+                          allItems: [...watched, ...watchLater],
+                          onCreateList: () => _showCreateListSheet(context),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -239,6 +247,72 @@ class _ListsTabViewState extends ConsumerState<ListsTabView>
       builder: (_) => _CreateListSheet(
         onCreated: (name) =>
             ref.read(customListsProvider.notifier).createList(name),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sign-in Prompt
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SignInPrompt extends ConsumerWidget {
+  final bool loading;
+  const _SignInPrompt({required this.loading});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.collections_bookmark_rounded,
+                color: AppColors.primary,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Your Collection',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Sign in to track watched films, build your watchlist, and create custom lists.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 36),
+            GoogleSignInButton(
+              loading: loading,
+              onTap: () =>
+                  ref.read(authNotifierProvider.notifier).signInWithGoogle(),
+            ),
+          ],
+        ),
       ),
     );
   }
