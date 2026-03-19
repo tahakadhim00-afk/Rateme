@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/award.dart';
 import '../models/movie.dart';
 import '../models/movie_detail.dart';
 import '../models/tv_detail.dart';
@@ -70,6 +69,14 @@ final searchResultsProvider = FutureProvider<List<Movie>>((ref) async {
   if (query.trim().isEmpty) return [];
   final results = await ref.watch(tmdbServiceProvider).searchMulti(query);
   return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
+});
+
+// Search people (actors / directors)
+final searchPeopleProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final query = ref.watch(searchQueryProvider);
+  if (query.trim().isEmpty) return [];
+  return ref.watch(tmdbServiceProvider).searchPeople(query);
 });
 
 // Genres
@@ -174,21 +181,6 @@ class GenreMoviesNotifier extends StateNotifier<AsyncValue<GenreMoviesState>> {
 final genreMoviesProvider = StateNotifierProvider.family<GenreMoviesNotifier,
     AsyncValue<GenreMoviesState>, int>((ref, genreId) {
   return GenreMoviesNotifier(ref, genreId);
-});
-
-// Awards list — uses curated static data with real TMDB IDs & logos.
-final awardsListProvider = FutureProvider<List<Award>>((ref) async {
-  return kTmdbAwards;
-});
-
-// Award-winning movies (oscar/golden globe keyword + high vote_average)
-final awardMoviesProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getAwardMovies();
-});
-
-// Award-winning TV shows
-final awardTvShowsProvider = FutureProvider<List<Movie>>((ref) async {
-  return ref.watch(tmdbServiceProvider).getAwardTvShows();
 });
 
 // ── TV Shows ──────────────────────────────────────────────────────────────

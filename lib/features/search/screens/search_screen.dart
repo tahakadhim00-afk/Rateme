@@ -31,7 +31,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final query = ref.watch(searchQueryProvider);
-    final results = ref.watch(searchResultsProvider);
     final selectedGenre = ref.watch(selectedGenreProvider);
 
     return Scaffold(
@@ -72,20 +71,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             Expanded(
               child: query.trim().isEmpty
                   ? _BrowseView(selectedGenre: selectedGenre)
-                  : results.when(
-                      data: (movies) => movies.isEmpty
-                          ? _EmptyResults(query: query)
-                          : _SearchResults(movies: movies),
-                      loading: () => const _ShimmerGrid(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 20)),
-                      error: (e, _) => Center(
-                        child: Text('Error: $e',
-                            style: TextStyle(
-                                color: AppThemeColors.of(context)
-                                    .textSecondary)),
-                      ),
-                    ),
+                  : _CombinedSearchResults(query: query),
             ),
           ],
         ),
@@ -702,32 +688,158 @@ class _GoldenBorderPainter extends CustomPainter {
   bool shouldRepaint(_GoldenBorderPainter old) => old.progress != progress;
 }
 
-// ── Search Results ────────────────────────────────────────────────────────────
+// ── Combined Search Results (actors + movies/TV) ──────────────────────────────
 
-class _SearchResults extends StatelessWidget {
-  final List movies;
+class _CombinedSearchResults extends ConsumerWidget {
+  final String query;
 
-  const _SearchResults({required this.movies});
+  const _CombinedSearchResults({required this.query});
 
   @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.58,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 16,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final moviesAsync = ref.watch(searchResultsProvider);
+    final peopleAsync = ref.watch(searchPeopleProvider);
+
+    return moviesAsync.when(
+      loading: () => const _ShimmerGrid(padding: EdgeInsets.symmetric(horizontal: 20)),
+      error: (e, _) => Center(
+        child: Text('Error: $e',
+            style: TextStyle(color: AppThemeColors.of(context).textSecondary)),
       ),
-      itemCount: movies.length,
-      itemBuilder: (ctx, i) {
-        final movie = movies[i];
-        return MovieCard(
-          movie: movie,
-          width: double.infinity,
-          onTap: () => ctx.push(movie.mediaType == 'tv'
-              ? '/tv/${movie.id}'
-              : '/movie/${movie.id}'),
+      data: (movies) {
+        final people = peopleAsync.valueOrNull ?? [];
+        final hasMovies = movies.isNotEmpty;
+        final hasPeople = people.isNotEmpty;
+
+        if (!hasMovies && !hasPeople) {
+          return _EmptyResults(query: query);
+        }
+
+        return CustomScrollView(
+          slivers: [
+            // ── Actors / People section ──────────────────────────────
+            if (hasPeople) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+                  child: Text(
+                    'People',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 110,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: people.length,
+                    itemBuilder: (ctx, i) {
+                      final person = people[i];
+                      final id = person['id'] as int;
+                      final name = person['name'] as String? ?? '';
+                      final profilePath = person['profile_path'] as String?;
+                      final dept = person['known_for_department'] as String? ?? '';
+                      return Padding(
+                        padding: EdgeInsets.only(right: i < people.length - 1 ? 16 : 0),
+                        child: GestureDetector(
+                          onTap: () => ctx.push('/actor/$id'),
+                          child: SizedBox(
+                            width: 72,
+                            child: Column(
+                              children: [
+                                CircleAvatar(
+                                  radius: 34,
+                                  backgroundColor:
+                                      AppThemeColors.of(ctx).surfaceVariant,
+                                  backgroundImage: profilePath != null
+                                      ? CachedNetworkImageProvider(
+                                          AppConstants.posterUrl(profilePath,
+                                              size: '/w185'),
+                                        )
+                                      : null,
+                                  child: profilePath == null
+                                      ? Icon(Icons.person_rounded,
+                                          color: AppThemeColors.of(ctx).textMuted,
+                                          size: 30)
+                                      : null,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppThemeColors.of(ctx).textPrimary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (dept.isNotEmpty)
+                                  Text(
+                                    dept,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: AppThemeColors.of(ctx).textMuted,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+
+            // ── Movies / TV section ───────────────────────────────────
+            if (hasMovies) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, hasPeople ? 20 : 12, 20, 14),
+                  child: Text(
+                    'Movies & TV',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 0.58,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 16,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) {
+                      final movie = movies[i];
+                      return MovieCard(
+                        movie: movie,
+                        width: double.infinity,
+                        onTap: () => ctx.push(movie.mediaType == 'tv'
+                            ? '/tv/${movie.id}'
+                            : '/movie/${movie.id}'),
+                      );
+                    },
+                    childCount: movies.length,
+                  ),
+                ),
+              ),
+            ],
+          ],
         );
       },
     );

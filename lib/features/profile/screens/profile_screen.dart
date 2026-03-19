@@ -111,16 +111,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         ),
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                            child: _CollectionButton(
-                              watchedCount: watched.length,
-                              watchLaterCount: watchLater.length,
-                              colors: colors,
-                            ),
-                          ),
-                        ),
-                        SliverToBoxAdapter(
-                          child: Padding(
                             padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                             child: isLoading
                                 ? _shimmerBox(context, 260)
@@ -934,112 +924,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _CoverPickerSheet(parentRef: ref),
-    );
-  }
-}
-
-// ── Collection Button ──────────────────────────────────────────────────────────
-
-class _CollectionButton extends StatelessWidget {
-  final int watchedCount;
-  final int watchLaterCount;
-  final AppThemeColors colors;
-
-  const _CollectionButton({
-    required this.watchedCount,
-    required this.watchLaterCount,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push('/lists'),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: colors.card.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: colors.border.withValues(alpha: 0.6),
-                width: 0.5,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFE8B84B), Color(0xFFC99A2E)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.collections_bookmark_rounded,
-                    size: 20,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'MY COLLECTION',
-                        style: TextStyle(
-                          color: colors.textMuted,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Lists, Watchlist & Favorites',
-                        style: TextStyle(
-                          color: colors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Text(
-                    '$watchedCount',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(Icons.chevron_right_rounded, color: colors.textMuted, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
