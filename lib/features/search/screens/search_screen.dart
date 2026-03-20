@@ -102,7 +102,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final updated = _recentSearches.where((s) => s != q).toList();
     setState(() => _recentSearches = updated);
     final prefs = await SharedPreferences.getInstance();
-    prefs.setStringList('search_recent_v1', updated);
+    await prefs.setStringList('search_recent_v1', updated);
   }
 
   Future<void> _clearAllRecents() async {
@@ -111,7 +111,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       _showRecents = false;
     });
     final prefs = await SharedPreferences.getInstance();
-    prefs.remove('search_recent_v1');
+    await prefs.remove('search_recent_v1');
   }
 
   @override
@@ -240,9 +240,6 @@ class _BrowseView extends ConsumerWidget {
             const SizedBox(height: 28),
             SectionHeader(
               title: 'Trending Globally',
-              actionLabel: 'See all',
-              onActionTap: () => context.push(
-                  '/see-all?category=trending_movies&title=Trending+Globally&mediaType=movie'),
             ),
             const SizedBox(height: 14),
             SizedBox(
@@ -1391,33 +1388,42 @@ class _RecentSearches extends StatelessWidget {
           ),
         ),
         ...recents.map(
-          (q) => InkWell(
-            onTap: () => onTap(q),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 11),
-              child: Row(
-                children: [
-                  Icon(Icons.history_rounded,
-                      size: 18, color: colors.textMuted),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      q,
-                      style: TextStyle(
-                          color: colors.textPrimary, fontSize: 15),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => onRemove(q),
+          (q) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onTap(q),
+                    borderRadius: BorderRadius.circular(8),
                     child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(Icons.close_rounded,
-                          size: 16, color: colors.textMuted),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          Icon(Icons.history_rounded,
+                              size: 18, color: colors.textMuted),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              q,
+                              style: TextStyle(
+                                  color: colors.textPrimary, fontSize: 15),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                GestureDetector(
+                  onTap: () => onRemove(q),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(Icons.close_rounded,
+                        size: 16, color: colors.textMuted),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
