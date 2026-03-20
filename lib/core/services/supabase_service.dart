@@ -25,6 +25,10 @@ class SupabaseService {
     await client.auth.signOut();
   }
 
+  Future<void> updateDisplayName(String name) async {
+    await client.auth.updateUser(UserAttributes(data: {'full_name': name}));
+  }
+
   Future<void> deleteAccount() async {
     final user = currentUser;
     if (user == null) return;

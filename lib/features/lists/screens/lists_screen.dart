@@ -1532,26 +1532,27 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
             child: TabBarView(
               controller: _tab,
               children: [
-                // ── In List (drag-to-reorder) ──────────────────────────────
+                // ── In List (grid) ────────────────────────────────────────
                 list.items.isEmpty
                     ? _EmptyState(
                         message: 'List is empty',
                         subMessage:
                             'Add titles from the "Add Titles" tab',
                       )
-                    : ReorderableListView.builder(
+                    : GridView.builder(
                         padding:
                             const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 0.56,
+                        ),
                         itemCount: list.items.length,
-                        onReorder: (oldIndex, newIndex) {
-                          if (newIndex > oldIndex) newIndex--;
-                          notifier.reorderItems(
-                              list.id, oldIndex, newIndex);
-                        },
                         itemBuilder: (ctx, i) {
                           final item = list.items[i];
-                          return _ListDetailRow(
-                            key: ValueKey(item.mediaId),
+                          return _ListDetailGridCard(
                             item: item,
                             onTap: () {
                               Navigator.pop(context);
@@ -1561,8 +1562,6 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
                                     : '/movie/${item.mediaId}',
                               );
                             },
-                            onRemove: () =>
-                                notifier.removeItem(list.id, item.mediaId),
                           );
                         },
                       ),
@@ -1728,83 +1727,62 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// List Detail Row (reorderable)
+// List Detail Grid Card
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ListDetailRow extends StatelessWidget {
+class _ListDetailGridCard extends StatelessWidget {
   final UserListItem item;
   final VoidCallback onTap;
-  final VoidCallback onRemove;
 
-  const _ListDetailRow({
-    super.key,
+  const _ListDetailGridCard({
     required this.item,
     required this.onTap,
-    required this.onRemove,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D0D0D),
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1A1A1A)),
-      ),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: item.posterPath != null
-              ? CachedNetworkImage(
-                  imageUrl: AppConstants.posterUrl(item.posterPath!),
-                  width: 38,
-                  height: 56,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, _, _) => _fallback(),
-                )
-              : _fallback(),
-        ),
-        title: Text(
-          item.title,
-          style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 14),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          item.year.isNotEmpty
-              ? item.year
-              : item.mediaType == 'tv'
-                  ? 'TV Show'
-                  : 'Movie',
-          style:
-              const TextStyle(color: Color(0xFF555555), fontSize: 12),
-        ),
-        onTap: onTap,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            GestureDetector(
-              onTap: onRemove,
+            // Poster
+            item.posterPath != null
+                ? CachedNetworkImage(
+                    imageUrl: AppConstants.posterUrl(item.posterPath!),
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => _fallback(),
+                  )
+                : _fallback(),
+            // Bottom gradient + title
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                padding: const EdgeInsets.fromLTRB(6, 20, 6, 6),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Colors.black, Colors.transparent],
+                  ),
                 ),
-                child: const Icon(Icons.remove_rounded,
-                    color: AppColors.error, size: 16),
+                child: Text(
+                  item.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.drag_handle_rounded,
-                color: Color(0xFF444444), size: 20),
           ],
         ),
       ),
@@ -1812,11 +1790,10 @@ class _ListDetailRow extends StatelessWidget {
   }
 
   Widget _fallback() => Container(
-        width: 38,
-        height: 56,
         color: const Color(0xFF111111),
-        child: const Icon(Icons.movie_rounded,
-            size: 16, color: Color(0xFF333333)),
+        child: const Center(
+          child: Icon(Icons.movie_rounded, size: 24, color: Color(0xFF333333)),
+        ),
       );
 }
 

@@ -495,7 +495,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       style: TextStyle(
                         color: colors.textPrimary,
                         fontSize: 60,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w400,
                         letterSpacing: -4,
                         height: 1,
                       ),
@@ -539,10 +539,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       width: 1,
                     ),
                     Expanded(
-                      child: _EditorialStat(
-                        value: movies.length.toString(),
-                        label: 'FILMS',
-                        icon: Icons.movie_rounded,
+                      child: GestureDetector(
+                        onTap: movies.isEmpty ? null : () => _showFilteredSheet(context, 'movie', movies),
+                        child: _EditorialStat(
+                          value: movies.length.toString(),
+                          label: 'FILMS',
+                          icon: Icons.movie_rounded,
+                          tappable: movies.isNotEmpty,
+                        ),
                       ),
                     ),
                     VerticalDivider(
@@ -550,10 +554,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       width: 1,
                     ),
                     Expanded(
-                      child: _EditorialStat(
-                        value: tvShows.length.toString(),
-                        label: 'TV SHOWS',
-                        icon: Icons.tv_rounded,
+                      child: GestureDetector(
+                        onTap: tvShows.isEmpty ? null : () => _showFilteredSheet(context, 'tv', tvShows),
+                        child: _EditorialStat(
+                          value: tvShows.length.toString(),
+                          label: 'TV SHOWS',
+                          icon: Icons.tv_rounded,
+                          tappable: tvShows.isNotEmpty,
+                        ),
                       ),
                     ),
                     VerticalDivider(
@@ -673,7 +681,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                             style: const TextStyle(
                               color: AppColors.primary,
                               fontSize: 13,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w400,
                               letterSpacing: -0.3,
                             ),
                           ),
@@ -716,7 +724,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                                           style: const TextStyle(
                                             color: AppColors.primary,
                                             fontSize: 16,
-                                            fontWeight: FontWeight.w700,
+                                            fontWeight: FontWeight.w400,
                                             letterSpacing: -0.5,
                                           ),
                                         ),
@@ -760,7 +768,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                                           style: const TextStyle(
                                             color: AppColors.primary,
                                             fontSize: 16,
-                                            fontWeight: FontWeight.w700,
+                                            fontWeight: FontWeight.w400,
                                             letterSpacing: -0.5,
                                           ),
                                         ),
@@ -959,6 +967,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           borderRadius: BorderRadius.circular(24),
         ),
       ),
+    );
+  }
+
+  void _showFilteredSheet(BuildContext context, String mediaType, List<UserListItem> items) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _FilteredWatchedSheet(mediaType: mediaType, items: items),
     );
   }
 
@@ -1265,7 +1282,6 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
                   onTap: () => context.go('/signin'),
                 )
               else ...[
-                Divider(height: 1, color: colors.border.withValues(alpha: 0.4)),
                 _SettingRow(
                   icon: Icons.manage_accounts_rounded,
                   iconBg: AppColors.primary,
@@ -1301,9 +1317,24 @@ class _SettingsCardState extends ConsumerState<_SettingsCard> {
               Text('RateMe', style: TextStyle(color: colors.textPrimary)),
             ],
           ),
-          content: Text(
-            'RateMe is the first Iraqi app dedicated to rating movies and TV shows. Powered by TMDb.',
-            style: TextStyle(color: colors.textSecondary, height: 1.6),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'RateMe is the first Iraqi app dedicated to rating movies and TV shows. Powered by TMDb.',
+                style: TextStyle(color: colors.textSecondary, height: 1.6),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Version 1.0.0 (1)',
+                style: TextStyle(
+                  color: colors.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -1325,12 +1356,14 @@ class _EditorialStat extends StatelessWidget {
   final String label;
   final IconData? icon;
   final String? imagePath;
+  final bool tappable;
 
   const _EditorialStat({
     required this.value,
     required this.label,
     this.icon,
     this.imagePath,
+    this.tappable = false,
   });
 
   @override
@@ -1346,14 +1379,23 @@ class _EditorialStat extends StatelessWidget {
           else
             Icon(icon, color: AppColors.primary, size: 13),
           const SizedBox(height: 7),
-          Text(
-            value,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              if (tappable) ...[
+                const SizedBox(width: 2),
+                Icon(Icons.chevron_right_rounded, size: 14, color: colors.textMuted),
+              ],
+            ],
           ),
           const SizedBox(height: 3),
           Text(
@@ -1429,6 +1471,176 @@ class _SettingRow extends StatelessWidget {
   }
 }
 
+// ── Filtered Watched Sheet ────────────────────────────────────────────────────
+
+class _FilteredWatchedSheet extends StatelessWidget {
+  final String mediaType;
+  final List<UserListItem> items;
+
+  const _FilteredWatchedSheet({required this.mediaType, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    final label = mediaType == 'movie' ? 'Films' : 'TV Shows';
+    final sorted = [...items]..sort((a, b) => b.addedAt.compareTo(a.addedAt));
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.82,
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: colors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+            child: Row(
+              children: [
+                Icon(
+                  mediaType == 'movie' ? Icons.movie_rounded : Icons.tv_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Watched $label',
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${items.length}',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(color: colors.border, height: 1),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: sorted.length,
+              itemBuilder: (context, i) {
+                final item = sorted[i];
+                return InkWell(
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/${item.mediaType}/${item.mediaId}');
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: item.posterPath != null
+                              ? CachedNetworkImage(
+                                  imageUrl: AppConstants.posterUrl(item.posterPath!),
+                                  width: 44,
+                                  height: 66,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (_, _, _) => _posterFallback(colors),
+                                )
+                              : _posterFallback(colors),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.title,
+                                style: TextStyle(
+                                  color: colors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                item.year.isEmpty ? '—' : item.year,
+                                style: TextStyle(
+                                  color: colors.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (item.userRating != null) ...[
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Image.asset('assets/app_icons/star.png',
+                                    width: 11, height: 11, color: AppColors.primary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  item.userRating!.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _posterFallback(AppThemeColors colors) => Container(
+        width: 44,
+        height: 66,
+        decoration: BoxDecoration(
+          color: colors.surfaceVariant,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(Icons.image_not_supported_rounded, color: colors.textMuted, size: 18),
+      );
+}
+
 // ── Cover Picker Sheet ────────────────────────────────────────────────────────
 
 class _CoverPickerSheet extends ConsumerStatefulWidget {
@@ -1494,11 +1706,18 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = AppThemeColors.of(context);
-    return Container(
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+        child: Container(
       height: MediaQuery.of(context).size.height * 0.88,
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: colors.surface.withValues(alpha: 0.75),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top: BorderSide(color: colors.border.withValues(alpha: 0.4), width: 0.5),
+        ),
       ),
       child: Column(
         children: [
@@ -1575,6 +1794,8 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
                     : _buildSearchResults(colors),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
