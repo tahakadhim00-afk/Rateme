@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,6 +9,8 @@ class NotificationService {
   static const _channelName = 'RateMe';
   static const _channelDesc = 'RateMe reminders and updates';
   static const _reminderKey = 'daily_reminder_enabled';
+  static const _reminderHourKey = 'daily_reminder_hour';
+  static const _reminderMinuteKey = 'daily_reminder_minute';
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -50,6 +53,20 @@ class NotificationService {
   static Future<bool> isReminderEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_reminderKey) ?? false;
+  }
+
+  static Future<TimeOfDay?> getReminderTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hour = prefs.getInt(_reminderHourKey);
+    final minute = prefs.getInt(_reminderMinuteKey);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  static Future<void> setReminderTime(TimeOfDay time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_reminderHourKey, time.hour);
+    await prefs.setInt(_reminderMinuteKey, time.minute);
   }
 
   static Future<void> setReminderEnabled(bool enabled) async {
