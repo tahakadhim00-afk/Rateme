@@ -63,11 +63,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Header(
-                    watchedCount: watched.length,
-                    watchLaterCount: watchLater.length,
-                    customListsCount: customLists.length,
-                  ),
+                  const _Header(),
                   _YellowTabBar(
                     controller: _tabController,
                     tabs: [
@@ -313,15 +309,7 @@ class _SignInPrompt extends ConsumerWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
-  final int watchedCount;
-  final int watchLaterCount;
-  final int customListsCount;
-
-  const _Header({
-    required this.watchedCount,
-    required this.watchLaterCount,
-    required this.customListsCount,
-  });
+  const _Header();
 
   @override
   Widget build(BuildContext context) {
@@ -339,65 +327,12 @@ class _Header extends StatelessWidget {
               letterSpacing: -1,
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _StatChip(Icons.check_circle_rounded, '$watchedCount', 'watched'),
-              const SizedBox(width: 8),
-              _StatChip(Icons.bookmark_rounded, '$watchLaterCount', 'watch later'),
-              const SizedBox(width: 8),
-              _StatChip(Icons.list_rounded, '$customListsCount', 'lists'),
-            ],
-          ),
         ],
       ),
     );
   }
 }
 
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String count;
-  final String label;
-
-  const _StatChip(this.icon, this.count, this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111111),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF222222), width: 1),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary, size: 13),
-          const SizedBox(width: 5),
-          Text(
-            count,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF666666),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Yellow Tab Bar
