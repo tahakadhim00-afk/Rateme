@@ -126,7 +126,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Search bar
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: TextField(
@@ -157,7 +156,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             ),
 
-            // Content
             Expanded(
               child: isSearching
                   ? _CombinedSearchResults(
@@ -219,7 +217,6 @@ class _BrowseView extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Media type toggle
           const SizedBox(height: 8),
           _GenreMediaToggle(
             selected: genreMedia,
@@ -227,7 +224,6 @@ class _BrowseView extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
 
-          // Genre chips
           _GenreChips(
             genres: genres,
             selectedId: selectedGenre,
@@ -988,7 +984,6 @@ class _CombinedSearchResults extends ConsumerWidget {
       data: (allMovies) {
         final people = peopleAsync.valueOrNull ?? [];
 
-        // Apply type filter
         final movies = filter == _SearchFilter.all
             ? allMovies
             : filter == _SearchFilter.movies
@@ -1009,7 +1004,6 @@ class _CombinedSearchResults extends ConsumerWidget {
 
         return CustomScrollView(
           slivers: [
-            // Filter chips
             SliverToBoxAdapter(
               child: _SearchFilterRow(
                 filter: filter,
@@ -1017,7 +1011,6 @@ class _CombinedSearchResults extends ConsumerWidget {
               ),
             ),
 
-            // People section
             if (showPeople) ...[
               SliverToBoxAdapter(
                 child: Padding(
@@ -1114,7 +1107,6 @@ class _CombinedSearchResults extends ConsumerWidget {
               ),
             ],
 
-            // Movies/TV section
             if (hasMovies) ...[
               SliverToBoxAdapter(
                 child: Padding(

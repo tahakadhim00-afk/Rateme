@@ -192,11 +192,9 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                   const SizedBox(height: 24),
                 ],
 
-                // User rating
                 _buildRatingSection(context, movie, listNotifier),
                 const SizedBox(height: 24),
 
-                // Genres
                 if (movie.genres.isNotEmpty) ...[
                   _buildSection(
                     context,
@@ -232,7 +230,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                   const SizedBox(height: 24),
                 ],
 
-                // Budget & Revenue
                 if ((movie.budget != null && movie.budget! > 0) ||
                     (movie.revenue != null && movie.revenue! > 0)) ...[
                   _buildSection(
@@ -268,7 +265,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                   const SizedBox(height: 24),
                 ],
 
-                // Cast
                 castAsync.when(
                   loading: () => const SizedBox.shrink(),
                   error: (_, _) => const SizedBox.shrink(),
@@ -372,7 +368,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                         ),
                 ),
 
-                // Trailers
                 ref.watch(movieVideosProvider(movie.id)).when(
                   data: (videos) => videos.isEmpty
                       ? const SizedBox.shrink()
@@ -432,7 +427,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                                                   ),
                                                 ),
                                               ),
-                                              // Dark overlay
                                               ClipRRect(
                                                 borderRadius:
                                                     BorderRadius.circular(14),
@@ -441,7 +435,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                                                       .withValues(alpha: 0.35),
                                                 ),
                                               ),
-                                              // Play button
                                               Center(
                                                 child: Container(
                                                   width: 52,
@@ -464,7 +457,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                                                   ),
                                                 ),
                                               ),
-                                              // Label
                                               Positioned(
                                                 left: 12,
                                                 right: 12,
@@ -517,7 +509,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                   error: (_, e) => const SizedBox.shrink(),
                 ),
 
-                // Recommendations
                 recommendations.when(
                   data: (movies) => movies.isEmpty
                       ? const SizedBox.shrink()
@@ -594,7 +585,6 @@ class _DetailViewState extends ConsumerState<_DetailView> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Poster
           if (movie.hasPoster)
             ClipRRect(
               borderRadius: BorderRadius.circular(14),

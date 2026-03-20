@@ -174,7 +174,6 @@ final listsProvider =
   (ref) => ListsNotifier(ref),
 );
 
-
 final watchedProvider = Provider<List<UserListItem>>(
   (ref) => ref.watch(listsProvider)[ListType.watched] ?? [],
 );

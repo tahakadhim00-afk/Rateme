@@ -59,7 +59,12 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
       backgroundColor: Colors.black,
       body: SafeArea(
         child: !isSignedIn
-            ? _SignInPrompt(loading: authLoading)
+            ? Column(
+                children: [
+                  const _Header(),
+                  Expanded(child: _SignInPrompt(loading: authLoading)),
+                ],
+              )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -272,15 +277,6 @@ class _SignInPrompt extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Your Collection',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
-            ),
             const SizedBox(height: 10),
             const Text(
               'Sign in to track watched films, build your watchlist, and create custom lists.',

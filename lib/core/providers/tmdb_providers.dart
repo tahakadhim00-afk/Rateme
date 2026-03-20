@@ -8,44 +8,36 @@ import '../services/tmdb_service.dart';
 
 final tmdbServiceProvider = Provider<TmdbService>((ref) => TmdbService());
 
-// Trending movies
 final trendingMoviesProvider = FutureProvider<List<Movie>>((ref) async {
   final results = await ref.watch(tmdbServiceProvider).getTrending();
   return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
-// Now playing
 final nowPlayingProvider = FutureProvider<List<Movie>>((ref) async {
   final results = await ref.watch(tmdbServiceProvider).getNowPlaying();
   return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
-// Popular movies
 final popularMoviesProvider = FutureProvider<List<Movie>>((ref) async {
   final results = await ref.watch(tmdbServiceProvider).getPopular();
   return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
-// Top rated
 final topRatedProvider = FutureProvider<List<Movie>>((ref) async {
   final results = await ref.watch(tmdbServiceProvider).getTopRated();
   return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
-// Upcoming
 final upcomingProvider = FutureProvider<List<Movie>>((ref) async {
   final results = await ref.watch(tmdbServiceProvider).getUpcoming();
-  // Allow 0 votes — upcoming films haven't been released yet
   return results.where((m) => m.voteAverage < 10.0).toList();
 });
 
-// Movie detail
 final movieDetailProvider =
     FutureProvider.family<MovieDetail, int>((ref, movieId) async {
   return ref.watch(tmdbServiceProvider).getMovieDetail(movieId);
 });
 
-// Movie cast
 final movieCastProvider =
     FutureProvider.family<List<Cast>, int>((ref, movieId) async {
   final raw = await ref.watch(tmdbServiceProvider).getMovieCredits(movieId);
@@ -55,14 +47,12 @@ final movieCastProvider =
       .toList();
 });
 
-// Movie recommendations
 final movieRecommendationsProvider =
     FutureProvider.family<List<Movie>, int>((ref, movieId) async {
   final results = await ref.watch(tmdbServiceProvider).getMovieRecommendations(movieId);
   return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
-// Search (multi: movies + TV)
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
 final searchResultsProvider = FutureProvider<List<Movie>>((ref) async {
@@ -72,7 +62,6 @@ final searchResultsProvider = FutureProvider<List<Movie>>((ref) async {
   return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
 });
 
-// Search people (actors / directors)
 final searchPeopleProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final query = ref.watch(searchQueryProvider);
@@ -80,21 +69,13 @@ final searchPeopleProvider =
   return ref.watch(tmdbServiceProvider).searchPeople(query);
 });
 
-// Genres
 final genresProvider = FutureProvider<List<Genre>>((ref) async {
   return ref.watch(tmdbServiceProvider).getGenres();
 });
 
-// Selected genre
 final selectedGenreProvider = StateProvider<int?>((ref) => null);
 
-final discoverByGenreProvider =
-    FutureProvider.family<List<Movie>, int>((ref, genreId) async {
-  final results = await ref.watch(tmdbServiceProvider).discoverByGenre(genreId);
-  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
-});
-
-// Paginated genre discover
+// ── Paginated genre discover
 class GenreMoviesState {
   final List<Movie> movies;
   final int currentPage;
@@ -192,8 +173,6 @@ final genreMoviesProvider = StateNotifierProvider.family<GenreMoviesNotifier,
     AsyncValue<GenreMoviesState>, int>((ref, genreId) {
   return GenreMoviesNotifier(ref, genreId);
 });
-
-// ── TV Genre discover (paginated) ──────────────────────────────────────────
 
 class GenreTvMoviesNotifier extends StateNotifier<AsyncValue<GenreMoviesState>> {
   final Ref _ref;

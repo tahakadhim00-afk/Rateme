@@ -174,8 +174,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                  width: 1,
+                  color: const Color(0xFFE8B84B),
+                  width: 2.5,
                 ),
                 color: AppColors.primary.withValues(alpha: 0.07),
               ),
@@ -319,7 +319,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           offset: const Offset(0, -52),
           child: Column(
             children: [
-              // Avatar with gold border
               Container(
                 width: 92,
                 height: 92,
@@ -445,7 +444,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Section header
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
                 child: Row(
@@ -643,14 +641,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 ),
               ],
 
-              // Watch time
               if (totalMins > 0)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Total row
                       Row(
                         children: [
                           const Icon(Icons.av_timer_rounded, size: 14, color: AppColors.primary),
@@ -676,7 +672,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         ],
                       ),
                       const SizedBox(height: 10),
-                      // Films + TV tiles
                       Row(
                         children: [
                           if (movieMins > 0)

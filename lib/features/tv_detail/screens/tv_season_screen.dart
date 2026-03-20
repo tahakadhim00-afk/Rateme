@@ -255,7 +255,6 @@ class _SeasonSkeleton extends StatelessWidget {
               ),
             ),
 
-            // Season header
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
@@ -285,7 +284,6 @@ class _SeasonSkeleton extends StatelessWidget {
               ),
             ),
 
-            // Episode tiles
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (_, i) => Padding(
@@ -423,7 +421,6 @@ class _EpisodeTileState extends ConsumerState<_EpisodeTile> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Still image
                 ClipRRect(
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(16),
@@ -447,7 +444,6 @@ class _EpisodeTileState extends ConsumerState<_EpisodeTile> {
                               color: colors.textMuted, size: 32),
                         ),
                 ),
-                // Info
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),

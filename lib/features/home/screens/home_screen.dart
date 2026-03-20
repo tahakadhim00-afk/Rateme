@@ -76,7 +76,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final slivers = <Widget>[
       _buildAppBar(context, notifCount, userName),
 
-      // Featured banner
       SliverToBoxAdapter(
         child: trending.when(
           data: (movies) => movies.isEmpty
@@ -87,7 +86,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
 
-      // Popular Movies
       const SliverToBoxAdapter(child: SizedBox(height: 30)),
       SliverToBoxAdapter(
         child: popular.when(
@@ -113,7 +111,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
 
-      // Top Rated
       const SliverToBoxAdapter(child: SizedBox(height: 30)),
       SliverToBoxAdapter(
         child: topRated.when(
@@ -133,7 +130,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
 
-      // Upcoming Movies
       const SliverToBoxAdapter(child: SizedBox(height: 30)),
       SliverToBoxAdapter(
         child: upcoming.when(
@@ -159,7 +155,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
 
-      // Trending TV Shows
       const SliverToBoxAdapter(child: SizedBox(height: 30)),
       SliverToBoxAdapter(
         child: trendingTv.when(
@@ -180,7 +175,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
 
-      // Airing Today
       const SliverToBoxAdapter(child: SizedBox(height: 30)),
       SliverToBoxAdapter(
         child: airingToday.when(
@@ -206,7 +200,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
 
-      // Popular TV Shows
       const SliverToBoxAdapter(child: SizedBox(height: 30)),
       SliverToBoxAdapter(
         child: popularTv.when(
@@ -232,7 +225,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
 
-      // Top Rated TV Shows
       const SliverToBoxAdapter(child: SizedBox(height: 30)),
       SliverToBoxAdapter(
         child: topRatedTv.when(
