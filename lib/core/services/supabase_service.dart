@@ -1,10 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_list_item.dart';
 import '../models/custom_list.dart';
+
 class SupabaseService {
   static SupabaseClient get client => Supabase.instance.client;
-
-  // ── Auth ──────────────────────────────────────────────────────────────────
 
   Stream<AuthState> get authStateChanges =>
       client.auth.onAuthStateChange;
@@ -34,17 +33,11 @@ class SupabaseService {
     if (user == null) return;
 
     try {
-      // Calls the SECURITY DEFINER function which deletes user_lists rows
-      // and the auth.users record in one transaction.
       await client.rpc('delete_user');
     } finally {
-      // Always sign out locally so the app reflects the deleted state,
-      // even if the RPC partially failed.
       await client.auth.signOut();
     }
   }
-
-  // ── User Lists ────────────────────────────────────────────────────────────
 
   Future<List<UserListItem>> fetchUserLists() async {
     final user = currentUser;
@@ -114,16 +107,6 @@ class SupabaseService {
         .eq('user_id', user.id)
         .eq('media_id', mediaId);
   }
-
-  // ── Custom Lists (cloud sync) ─────────────────────────────────────────────
-  // Requires a Supabase table:
-  //   create table custom_lists (
-  //     user_id uuid references auth.users on delete cascade primary key,
-  //     data    jsonb not null default '[]',
-  //     updated_at timestamptz not null default now()
-  //   );
-  //   alter table custom_lists enable row level security;
-  //   create policy "own" on custom_lists for all using (auth.uid() = user_id);
 
   Future<List<CustomList>> fetchCustomLists() async {
     final user = currentUser;

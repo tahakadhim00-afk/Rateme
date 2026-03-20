@@ -2,23 +2,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 
-// Streams auth state changes
 final authStateProvider = StreamProvider<AuthState>((ref) {
   return supabaseService.authStateChanges;
 });
 
-// Current user (null if guest)
 final currentUserProvider = Provider<User?>((ref) {
   ref.watch(authStateProvider);
   return supabaseService.currentUser;
 });
 
-// Boolean convenience
 final isSignedInProvider = Provider<bool>((ref) {
   return ref.watch(currentUserProvider) != null;
 });
 
-// Auth operations notifier
 class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   AuthNotifier() : super(const AsyncValue.data(null));
 

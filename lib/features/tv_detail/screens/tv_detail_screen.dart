@@ -931,10 +931,8 @@ class _TvDetailSkeleton extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Hero backdrop
               Container(height: 300, color: Colors.white),
 
-              // Main info row
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: Row(
@@ -969,7 +967,6 @@ class _TvDetailSkeleton extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Action buttons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(children: [
@@ -980,7 +977,6 @@ class _TvDetailSkeleton extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              // Overview
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
@@ -998,7 +994,6 @@ class _TvDetailSkeleton extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              // Genres
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
@@ -1018,7 +1013,6 @@ class _TvDetailSkeleton extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              // Seasons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: _SBox(w: 100, h: 16, r: 4),
@@ -1039,7 +1033,6 @@ class _TvDetailSkeleton extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              // Cast
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: _SBox(w: 60, h: 16, r: 4),

@@ -20,9 +20,7 @@ class CustomListsNotifier extends StateNotifier<List<CustomList>> {
   }
 
   Future<void> _load() async {
-    // Load local first for instant display
     await _loadLocal();
-    // Then sync from cloud if signed in
     if (_userId != null) {
       await _syncFromCloud();
     }
@@ -53,11 +51,9 @@ class CustomListsNotifier extends StateNotifier<List<CustomList>> {
       final cloudLists = await supabaseService.fetchCustomLists();
       if (!mounted) return;
       if (cloudLists.isNotEmpty) {
-        // Cloud wins if it has data
         state = cloudLists;
         await _saveLocal();
       } else if (state.isNotEmpty) {
-        // Push local to cloud if cloud is empty
         await supabaseService.saveCustomLists(state);
       }
     } catch (_) {}

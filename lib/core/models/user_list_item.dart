@@ -7,10 +7,10 @@ class UserListItem {
   final String? releaseDate;
   final double voteAverage;
   final ListType listType;
-  final String mediaType; // 'movie' | 'tv' | 'person'
+  final String mediaType;
   final DateTime addedAt;
   final double? userRating;
-  final int? runtime; // duration in minutes
+  final int? runtime;
   final List<int> genreIds;
 
   const UserListItem({
@@ -26,9 +26,6 @@ class UserListItem {
     this.runtime,
     this.genreIds = const [],
   });
-
-  // Backwards-compat alias
-  int get movieId => mediaId;
 
   String get year {
     if (releaseDate == null || releaseDate!.isEmpty) return '';
