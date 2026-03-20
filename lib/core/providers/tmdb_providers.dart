@@ -35,7 +35,8 @@ final topRatedProvider = FutureProvider<List<Movie>>((ref) async {
 // Upcoming
 final upcomingProvider = FutureProvider<List<Movie>>((ref) async {
   final results = await ref.watch(tmdbServiceProvider).getUpcoming();
-  return results.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
+  // Allow 0 votes — upcoming films haven't been released yet
+  return results.where((m) => m.voteAverage < 10.0).toList();
 });
 
 // Movie detail
@@ -99,12 +100,14 @@ class GenreMoviesState {
   final int currentPage;
   final bool isLoadingMore;
   final bool hasMore;
+  final int totalPages;
 
   const GenreMoviesState({
     this.movies = const [],
     this.currentPage = 0,
     this.isLoadingMore = false,
     this.hasMore = true,
+    this.totalPages = 1,
   });
 
   GenreMoviesState copyWith({
@@ -112,12 +115,14 @@ class GenreMoviesState {
     int? currentPage,
     bool? isLoadingMore,
     bool? hasMore,
+    int? totalPages,
   }) =>
       GenreMoviesState(
         movies: movies ?? this.movies,
         currentPage: currentPage ?? this.currentPage,
         isLoadingMore: isLoadingMore ?? this.isLoadingMore,
         hasMore: hasMore ?? this.hasMore,
+        totalPages: totalPages ?? this.totalPages,
       );
 }
 
@@ -133,28 +138,33 @@ class GenreMoviesNotifier extends StateNotifier<AsyncValue<GenreMoviesState>> {
   Future<void> _loadPage(int page) async {
     try {
       final service = _ref.read(tmdbServiceProvider);
-      final raw = await service.discoverByGenre(genreId, page: page);
+      final (raw, totalPages) =
+          await service.discoverByGenrePaged(genreId, page: page);
       final fresh =
           raw.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
+      final hasMore = page < totalPages;
 
       state = state.when(
         data: (s) => AsyncValue.data(s.copyWith(
           movies: [...s.movies, ...fresh],
           currentPage: page,
           isLoadingMore: false,
-          hasMore: fresh.length >= 20,
+          hasMore: hasMore,
+          totalPages: totalPages,
         )),
         loading: () => AsyncValue.data(GenreMoviesState(
           movies: fresh,
           currentPage: page,
           isLoadingMore: false,
-          hasMore: fresh.length >= 20,
+          hasMore: hasMore,
+          totalPages: totalPages,
         )),
-        error: (e2, st2) => AsyncValue.data(GenreMoviesState(
+        error: (_, _) => AsyncValue.data(GenreMoviesState(
           movies: fresh,
           currentPage: page,
           isLoadingMore: false,
-          hasMore: fresh.length >= 20,
+          hasMore: hasMore,
+          totalPages: totalPages,
         )),
       );
     } catch (e, st) {
@@ -181,6 +191,75 @@ class GenreMoviesNotifier extends StateNotifier<AsyncValue<GenreMoviesState>> {
 final genreMoviesProvider = StateNotifierProvider.family<GenreMoviesNotifier,
     AsyncValue<GenreMoviesState>, int>((ref, genreId) {
   return GenreMoviesNotifier(ref, genreId);
+});
+
+// ── TV Genre discover (paginated) ──────────────────────────────────────────
+
+class GenreTvMoviesNotifier extends StateNotifier<AsyncValue<GenreMoviesState>> {
+  final Ref _ref;
+  final int genreId;
+
+  GenreTvMoviesNotifier(this._ref, this.genreId)
+      : super(const AsyncValue.loading()) {
+    _loadPage(1);
+  }
+
+  Future<void> _loadPage(int page) async {
+    try {
+      final service = _ref.read(tmdbServiceProvider);
+      final (raw, totalPages) =
+          await service.discoverTvByGenrePaged(genreId, page: page);
+      final fresh =
+          raw.where((m) => m.voteAverage > 0.0 && m.voteAverage < 10.0).toList();
+      final hasMore = page < totalPages;
+
+      state = state.when(
+        data: (s) => AsyncValue.data(s.copyWith(
+          movies: [...s.movies, ...fresh],
+          currentPage: page,
+          isLoadingMore: false,
+          hasMore: hasMore,
+          totalPages: totalPages,
+        )),
+        loading: () => AsyncValue.data(GenreMoviesState(
+          movies: fresh,
+          currentPage: page,
+          isLoadingMore: false,
+          hasMore: hasMore,
+          totalPages: totalPages,
+        )),
+        error: (_, _) => AsyncValue.data(GenreMoviesState(
+          movies: fresh,
+          currentPage: page,
+          isLoadingMore: false,
+          hasMore: hasMore,
+          totalPages: totalPages,
+        )),
+      );
+    } catch (e, st) {
+      if (state is AsyncLoading) {
+        state = AsyncValue.error(e, st);
+      } else {
+        state = state.when(
+          data: (s) => AsyncValue.data(s.copyWith(isLoadingMore: false)),
+          loading: () => AsyncValue.error(e, st),
+          error: (e2, st2) => AsyncValue.error(e, st),
+        );
+      }
+    }
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null || current.isLoadingMore || !current.hasMore) return;
+    state = AsyncValue.data(current.copyWith(isLoadingMore: true));
+    await _loadPage(current.currentPage + 1);
+  }
+}
+
+final genreTvMoviesProvider = StateNotifierProvider.family<GenreTvMoviesNotifier,
+    AsyncValue<GenreMoviesState>, int>((ref, genreId) {
+  return GenreTvMoviesNotifier(ref, genreId);
 });
 
 // ── TV Shows ──────────────────────────────────────────────────────────────
