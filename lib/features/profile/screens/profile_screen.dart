@@ -319,29 +319,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           offset: const Offset(0, -52),
           child: Column(
             children: [
-              // Avatar with gold gradient ring
+              // Avatar with gold border
               Container(
                 width: 92,
                 height: 92,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFE8B84B), Color(0xFFC99A2E)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                  border: Border.all(
+                    color: const Color(0xFFE8B84B),
+                    width: 2.5,
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(2.5),
-                  child: ClipOval(
-                    child: avatarUrl != null
-                        ? Image.network(
-                            avatarUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _avatarFallback(),
-                          )
-                        : _avatarFallback(),
-                  ),
+                child: ClipOval(
+                  child: avatarUrl != null
+                      ? Image.network(
+                          avatarUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _avatarFallback(),
+                        )
+                      : _avatarFallback(),
                 ),
               ),
               const SizedBox(height: 14),
