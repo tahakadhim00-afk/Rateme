@@ -9,7 +9,6 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
 
   ListsNotifier(this._ref)
       : super({
-          ListType.favorites: [],
           ListType.watched: [],
           ListType.watchLater: [],
         }) {
@@ -28,7 +27,6 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
       for (final item in [
         ...state[ListType.watched] ?? [],
         ...state[ListType.watchLater] ?? [],
-        ...state[ListType.favorites] ?? [],
       ]) {
         try {
           await supabaseService.addToList(item);
@@ -37,7 +35,6 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
 
       final items = await supabaseService.fetchUserLists();
       final grouped = <ListType, List<UserListItem>>{
-        ListType.favorites: [],
         ListType.watched: [],
         ListType.watchLater: [],
       };
@@ -53,7 +50,6 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
 
   void clearAll() {
     state = {
-      ListType.favorites: [],
       ListType.watched: [],
       ListType.watchLater: [],
     };
@@ -178,9 +174,6 @@ final listsProvider =
   (ref) => ListsNotifier(ref),
 );
 
-final favoritesProvider = Provider<List<UserListItem>>(
-  (ref) => ref.watch(listsProvider)[ListType.favorites] ?? [],
-);
 
 final watchedProvider = Provider<List<UserListItem>>(
   (ref) => ref.watch(listsProvider)[ListType.watched] ?? [],

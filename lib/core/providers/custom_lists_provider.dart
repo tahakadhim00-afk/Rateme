@@ -3,22 +3,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/custom_list.dart';
 import '../models/user_list_item.dart';
+import '../services/supabase_service.dart';
 import 'auth_provider.dart';
 
-// Key scoped to the user — guests get 'guest', signed-in users get their uid.
-String _prefsKey(String? userId) =>
-    'custom_lists_v1_${userId ?? 'guest'}';
+String _prefsKey(String? userId) => 'custom_lists_v1_${userId ?? 'guest'}';
 
 class CustomListsNotifier extends StateNotifier<List<CustomList>> {
   final String _key;
+  final String? _userId;
 
   CustomListsNotifier(String? userId)
       : _key = _prefsKey(userId),
+        _userId = userId,
         super([]) {
     _load();
   }
 
   Future<void> _load() async {
+    // Load local first for instant display
+    await _loadLocal();
+    // Then sync from cloud if signed in
+    if (_userId != null) {
+      await _syncFromCloud();
+    }
+  }
+
+  Future<void> _loadLocal() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_key);
@@ -26,16 +36,38 @@ class CustomListsNotifier extends StateNotifier<List<CustomList>> {
       final list = (jsonDecode(raw) as List<dynamic>)
           .map((e) => CustomList.fromJson(e as Map<String, dynamic>))
           .toList();
-      state = list;
+      if (mounted) state = list;
     } catch (_) {}
   }
 
-  Future<void> _save() async {
+  Future<void> _saveLocal() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
           _key, jsonEncode(state.map((e) => e.toJson()).toList()));
     } catch (_) {}
+  }
+
+  Future<void> _syncFromCloud() async {
+    try {
+      final cloudLists = await supabaseService.fetchCustomLists();
+      if (!mounted) return;
+      if (cloudLists.isNotEmpty) {
+        // Cloud wins if it has data
+        state = cloudLists;
+        await _saveLocal();
+      } else if (state.isNotEmpty) {
+        // Push local to cloud if cloud is empty
+        await supabaseService.saveCustomLists(state);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _save() async {
+    await _saveLocal();
+    if (_userId != null) {
+      await supabaseService.saveCustomLists(state);
+    }
   }
 
   Future<void> createList(String name) async {
@@ -78,18 +110,26 @@ class CustomListsNotifier extends StateNotifier<List<CustomList>> {
     await _save();
   }
 
+  Future<void> reorderItems(String listId, int oldIndex, int newIndex) async {
+    state = state.map((l) {
+      if (l.id != listId) return l;
+      final items = [...l.items];
+      final item = items.removeAt(oldIndex);
+      items.insert(newIndex, item);
+      return l.copyWith(items: items);
+    }).toList();
+    await _save();
+  }
+
   bool isInList(String listId, int mediaId) {
     final list = state.firstWhere(
       (l) => l.id == listId,
-      orElse: () =>
-          CustomList(id: '', name: '', createdAt: DateTime.now()),
+      orElse: () => CustomList(id: '', name: '', createdAt: DateTime.now()),
     );
     return list.items.any((e) => e.mediaId == mediaId);
   }
 }
 
-// The provider watches the current user so it re-creates automatically
-// whenever the user signs in, signs out, or switches accounts.
 final customListsProvider =
     StateNotifierProvider<CustomListsNotifier, List<CustomList>>((ref) {
   final userId = ref.watch(currentUserProvider)?.id;

@@ -294,36 +294,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               right: 16,
               child: GestureDetector(
                 onTap: () => _showCoverPicker(context, ref),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
+                child: ClipOval(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.42),
-                        borderRadius: BorderRadius.circular(20),
+                        shape: BoxShape.circle,
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.15),
                           width: 0.5,
                         ),
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.photo_camera_rounded, color: Colors.white, size: 13),
-                          SizedBox(width: 5),
-                          Text(
-                            'EDIT COVER',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                        ],
-                      ),
+                      child: const Icon(Icons.edit_rounded, color: Colors.white, size: 14),
                     ),
                   ),
                 ),
@@ -666,81 +650,129 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               // Watch time
               if (totalMins > 0)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.2),
-                        width: 0.5,
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Total row
+                      Row(
+                        children: [
+                          const Icon(Icons.av_timer_rounded, size: 14, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Total watch time',
+                            style: TextStyle(
+                              color: colors.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            fmtTime(totalMins),
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.av_timer_rounded, size: 18, color: AppColors.primary),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'TOTAL WATCH TIME',
-                              style: TextStyle(
-                                color: colors.textMuted,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.2,
+                      const SizedBox(height: 10),
+                      // Films + TV tiles
+                      Row(
+                        children: [
+                          if (movieMins > 0)
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(alpha: 0.15),
+                                    width: 0.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.movie_outlined, size: 16, color: AppColors.primary),
+                                    const SizedBox(width: 10),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Films',
+                                          style: TextStyle(
+                                            color: colors.textMuted,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 1),
+                                        Text(
+                                          fmtTime(movieMins),
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              fmtTime(totalMins),
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.5,
+                          if (movieMins > 0 && tvMins > 0) const SizedBox(width: 10),
+                          if (tvMins > 0)
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(alpha: 0.15),
+                                    width: 0.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.tv_outlined, size: 16, color: AppColors.primary),
+                                    const SizedBox(width: 10),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'TV Shows',
+                                          style: TextStyle(
+                                            color: colors.textMuted,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 1),
+                                        Text(
+                                          fmtTime(tvMins),
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ],
-                        ),
-                        const Spacer(),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (movieMins > 0)
-                              Row(
-                                children: [
-                                  Text('Films',
-                                      style: TextStyle(
-                                          color: colors.textMuted, fontSize: 10)),
-                                  const SizedBox(width: 5),
-                                  Text(fmtTime(movieMins),
-                                      style: const TextStyle(
-                                          color: AppColors.primary,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                            if (tvMins > 0)
-                              Row(
-                                children: [
-                                  Text('TV',
-                                      style: TextStyle(
-                                          color: colors.textMuted, fontSize: 10)),
-                                  const SizedBox(width: 5),
-                                  Text(fmtTime(tvMins),
-                                      style: const TextStyle(
-                                          color: AppColors.primary,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
                 )
               else
@@ -753,6 +785,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 
   // ── Genre Chart ──────────────────────────────────────────────────────────────
+
+  static const _genreIcons = <int, IconData>{
+    28:     Icons.bolt_rounded,               // Action
+    12:     Icons.explore_rounded,             // Adventure
+    16:     Icons.brush_rounded,               // Animation
+    35:     Icons.sentiment_very_satisfied_rounded, // Comedy
+    80:     Icons.local_police_rounded,        // Crime
+    99:     Icons.video_camera_back_rounded,   // Documentary
+    18:     Icons.theater_comedy_rounded,      // Drama
+    10751:  Icons.family_restroom_rounded,     // Family
+    14:     Icons.auto_awesome_rounded,        // Fantasy
+    36:     Icons.account_balance_rounded,     // History
+    27:     Icons.dark_mode_rounded,           // Horror
+    10402:  Icons.music_note_rounded,          // Music
+    9648:   Icons.search_rounded,              // Mystery
+    10749:  Icons.favorite_rounded,            // Romance
+    878:    Icons.rocket_launch_rounded,       // Sci-Fi
+    10770:  Icons.tv_rounded,                  // TV Movie
+    53:     Icons.crisis_alert_rounded,        // Thriller
+    10752:  Icons.military_tech_rounded,       // War
+    37:     Icons.landscape_rounded,           // Western
+    10759:  Icons.bolt_rounded,               // Action & Adventure
+    10762:  Icons.child_care_rounded,          // Kids
+    10763:  Icons.newspaper_rounded,           // News
+    10764:  Icons.live_tv_rounded,             // Reality
+    10765:  Icons.rocket_launch_rounded,       // Sci-Fi & Fantasy
+    10766:  Icons.spa_rounded,                 // Soap
+    10767:  Icons.mic_rounded,                 // Talk
+    10768:  Icons.gavel_rounded,               // War & Politics
+  };
 
   Widget _buildGenreChart(BuildContext context, List<UserListItem> watched) {
     final tally = <int, int>{};
@@ -815,14 +877,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     children: [
                       SizedBox(
                         width: 18,
-                        child: Text(
-                          '${i + 1}',
-                          style: TextStyle(
-                            color: i < 3 ? AppColors.primary : colors.textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          textAlign: TextAlign.center,
+                        child: Icon(
+                          _genreIcons[genre.key] ?? Icons.category_rounded,
+                          size: 15,
+                          color: i < 3 ? AppColors.primary : colors.textMuted,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -870,10 +928,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         width: 32,
                         child: Text(
                           '$pct%',
-                          style: const TextStyle(
-                            color: AppColors.primary,
+                          style: TextStyle(
+                            color: colors.textMuted,
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w400,
                           ),
                           textAlign: TextAlign.end,
                         ),
@@ -1022,7 +1080,7 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'This will permanently delete your account and all your data (ratings, watchlists, favorites). This action cannot be undone.',
+                'This will permanently delete your account and all your data (ratings, watchlists, custom lists). This action cannot be undone.',
                 style: TextStyle(color: colors.textSecondary, height: 1.6),
               ),
               const SizedBox(height: 16),
