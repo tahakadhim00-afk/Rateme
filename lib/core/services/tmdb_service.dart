@@ -117,13 +117,41 @@ class TmdbService {
   }
 
   Future<List<Movie>> discoverByGenre(int genreId, {int page = 1}) async {
+    final (movies, _) = await discoverByGenrePaged(genreId, page: page);
+    return movies;
+  }
+
+  Future<(List<Movie>, int)> discoverByGenrePaged(int genreId, {int page = 1}) async {
     final resp = await _dio.get('/discover/movie', queryParameters: {
       'with_genres': genreId,
       'page': page,
       'sort_by': 'popularity.desc',
     });
+    final totalPages = (resp.data['total_pages'] as num?)?.toInt() ?? 1;
     final results = resp.data['results'] as List<dynamic>;
-    return _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList());
+    return (
+      _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>)).toList()),
+      totalPages,
+    );
+  }
+
+  Future<List<Movie>> discoverTvByGenre(int genreId, {int page = 1}) async {
+    final (movies, _) = await discoverTvByGenrePaged(genreId, page: page);
+    return movies;
+  }
+
+  Future<(List<Movie>, int)> discoverTvByGenrePaged(int genreId, {int page = 1}) async {
+    final resp = await _dio.get('/discover/tv', queryParameters: {
+      'with_genres': genreId,
+      'page': page,
+      'sort_by': 'popularity.desc',
+    });
+    final totalPages = (resp.data['total_pages'] as num?)?.toInt() ?? 1;
+    final results = resp.data['results'] as List<dynamic>;
+    return (
+      _clean(results.map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: 'tv')).toList()),
+      totalPages,
+    );
   }
 
   Future<List<Genre>> getGenres() async {

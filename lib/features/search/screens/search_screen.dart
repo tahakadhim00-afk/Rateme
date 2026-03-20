@@ -1,16 +1,23 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/genre.dart';
 import '../../../core/models/movie.dart';
+import '../../../core/providers/lists_provider.dart';
 import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/movie_card.dart';
 import '../../../shared/widgets/section_header.dart';
+
+enum _SearchFilter { all, movies, tv }
+
+enum _GenreMedia { movie, tv }
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -21,17 +28,98 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+  Timer? _debounce;
+  _SearchFilter _filter = _SearchFilter.all;
+  _GenreMedia _genreMedia = _GenreMedia.movie;
+  List<String> _recentSearches = [];
+  bool _showRecents = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecents();
+    _focusNode.addListener(_onFocusChange);
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onFocusChange() {
+    final query = ref.read(searchQueryProvider);
+    setState(() {
+      _showRecents = _focusNode.hasFocus &&
+          query.trim().isEmpty &&
+          _recentSearches.isNotEmpty;
+    });
+  }
+
+  void _onSearchChanged(String v) {
+    _debounce?.cancel();
+    if (v.trim().isEmpty) {
+      ref.read(searchQueryProvider.notifier).state = '';
+      setState(() {
+        _showRecents =
+            _focusNode.hasFocus && _recentSearches.isNotEmpty;
+      });
+      return;
+    }
+    setState(() => _showRecents = false);
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      ref.read(searchQueryProvider.notifier).state = v;
+      _saveRecent(v.trim());
+    });
+  }
+
+  void _applyQuery(String q) {
+    _controller.text = q;
+    ref.read(searchQueryProvider.notifier).state = q;
+    setState(() => _showRecents = false);
+    _focusNode.unfocus();
+  }
+
+  Future<void> _loadRecents() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('search_recent_v1') ?? [];
+    if (mounted) setState(() => _recentSearches = list);
+  }
+
+  Future<void> _saveRecent(String q) async {
+    final updated =
+        [q, ..._recentSearches.where((s) => s != q)].take(8).toList();
+    setState(() => _recentSearches = updated);
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setStringList('search_recent_v1', updated);
+  }
+
+  Future<void> _removeRecent(String q) async {
+    final updated = _recentSearches.where((s) => s != q).toList();
+    setState(() => _recentSearches = updated);
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setStringList('search_recent_v1', updated);
+  }
+
+  Future<void> _clearAllRecents() async {
+    setState(() {
+      _recentSearches = [];
+      _showRecents = false;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove('search_recent_v1');
   }
 
   @override
   Widget build(BuildContext context) {
     final query = ref.watch(searchQueryProvider);
     final selectedGenre = ref.watch(selectedGenreProvider);
+    final colors = AppThemeColors.of(context);
+    final isSearching = query.trim().isNotEmpty;
 
     return Scaffold(
       body: SafeArea(
@@ -41,37 +129,59 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             // Search bar
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: Builder(builder: (context) {
-                final colors = AppThemeColors.of(context);
-                return TextField(
-                  controller: _controller,
-                  style: TextStyle(color: colors.textPrimary),
-                  onChanged: (v) =>
-                      ref.read(searchQueryProvider.notifier).state = v,
-                  decoration: InputDecoration(
-                    hintText: 'Search movies, actors, directors',
-                    prefixIcon: Icon(Icons.search_rounded,
-                        color: colors.textMuted),
-                    suffixIcon: _controller.text.isNotEmpty
-                        ? GestureDetector(
-                            onTap: () {
-                              _controller.clear();
-                              ref.read(searchQueryProvider.notifier).state = '';
-                            },
-                            child: Icon(Icons.close_rounded,
-                                color: colors.textMuted),
-                          )
-                        : null,
-                  ),
-                );
-              }),
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                style: TextStyle(color: colors.textPrimary),
+                onChanged: _onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Search movies, actors, directors',
+                  prefixIcon:
+                      Icon(Icons.search_rounded, color: colors.textMuted),
+                  suffixIcon: _controller.text.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () {
+                            _controller.clear();
+                            _debounce?.cancel();
+                            ref.read(searchQueryProvider.notifier).state = '';
+                            setState(() {
+                              _showRecents = _focusNode.hasFocus &&
+                                  _recentSearches.isNotEmpty;
+                            });
+                          },
+                          child: Icon(Icons.close_rounded,
+                              color: colors.textMuted),
+                        )
+                      : null,
+                ),
+              ),
             ),
 
             // Content
             Expanded(
-              child: query.trim().isEmpty
-                  ? _BrowseView(selectedGenre: selectedGenre)
-                  : _CombinedSearchResults(query: query),
+              child: isSearching
+                  ? _CombinedSearchResults(
+                      query: query,
+                      filter: _filter,
+                      onFilterChange: (f) => setState(() => _filter = f),
+                    )
+                  : _showRecents
+                      ? _RecentSearches(
+                          recents: _recentSearches,
+                          onTap: _applyQuery,
+                          onRemove: _removeRecent,
+                          onClearAll: _clearAllRecents,
+                        )
+                      : _BrowseView(
+                          selectedGenre: selectedGenre,
+                          genreMedia: _genreMedia,
+                          onGenreMediaChange: (m) => setState(() {
+                            _genreMedia = m;
+                            ref
+                                .read(selectedGenreProvider.notifier)
+                                .state = null;
+                          }),
+                        ),
             ),
           ],
         ),
@@ -84,37 +194,45 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
 class _BrowseView extends ConsumerWidget {
   final int? selectedGenre;
+  final _GenreMedia genreMedia;
+  final ValueChanged<_GenreMedia> onGenreMediaChange;
 
-  const _BrowseView({this.selectedGenre});
+  const _BrowseView({
+    this.selectedGenre,
+    required this.genreMedia,
+    required this.onGenreMediaChange,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final genres = ref.watch(genresProvider);
     final trending = ref.watch(trendingMoviesProvider);
     final popular = ref.watch(popularMoviesProvider);
-    final genreState =
-        selectedGenre != null ? ref.watch(genreMoviesProvider(selectedGenre!)) : null;
+    final genres =
+        genreMedia == _GenreMedia.movie ? kMovieGenres : kTvGenres;
+    final genreState = selectedGenre != null
+        ? (genreMedia == _GenreMedia.movie
+            ? ref.watch(genreMoviesProvider(selectedGenre!))
+            : ref.watch(genreTvMoviesProvider(selectedGenre!)))
+        : null;
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Genre chips — horizontal single row
-          const SizedBox(height: 4),
-          genres.when(
-            data: (list) => _GenreChips(
-              genres: list,
-              selectedId: selectedGenre,
-              onSelect: (id) =>
-                  ref.read(selectedGenreProvider.notifier).state = id,
-            ),
-            loading: () => const _ShimmerChips(),
-            error: (e, st) => _GenreChips(
-              genres: kMovieGenres,
-              selectedId: selectedGenre,
-              onSelect: (id) =>
-                  ref.read(selectedGenreProvider.notifier).state = id,
-            ),
+          // Media type toggle
+          const SizedBox(height: 8),
+          _GenreMediaToggle(
+            selected: genreMedia,
+            onSelect: onGenreMediaChange,
+          ),
+          const SizedBox(height: 12),
+
+          // Genre chips
+          _GenreChips(
+            genres: genres,
+            selectedId: selectedGenre,
+            onSelect: (id) =>
+                ref.read(selectedGenreProvider.notifier).state = id,
           ),
 
           if (selectedGenre == null) ...[
@@ -149,7 +267,8 @@ class _BrowseView extends ConsumerWidget {
                   },
                 ),
                 loading: () => const _ShimmerTrendingRow(),
-                error: (e, st) => const SizedBox.shrink(),
+                error: (_, _) => _BrowseError(
+                    onRetry: () => ref.invalidate(trendingMoviesProvider)),
               ),
             ),
 
@@ -163,17 +282,18 @@ class _BrowseView extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(width: 10),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.4),
+                          color:
+                              AppColors.primary.withValues(alpha: 0.4),
                           width: 0.5),
                     ),
                     child: const Text(
-                      'LOCAL PEAK',
+                      'THIS WEEK',
                       style: TextStyle(
                         color: AppColors.primary,
                         fontSize: 10,
@@ -200,11 +320,12 @@ class _BrowseView extends ConsumerWidget {
                 }).toList(),
               ),
               loading: () => const _ShimmerTop10(),
-              error: (e, st) => const SizedBox.shrink(),
+              error: (_, _) => _BrowseError(
+                  onRetry: () => ref.invalidate(popularMoviesProvider)),
             ),
             const SizedBox(height: 40),
           ] else ...[
-            // ── Genre movies grid ────────────────────────────────────────
+            // ── Genre grid ───────────────────────────────────────────────
             const SizedBox(height: 24),
             if (genreState != null)
               genreState.when(
@@ -243,17 +364,25 @@ class _BrowseView extends ConsumerWidget {
                             ? const Center(
                                 child: Padding(
                                   padding: EdgeInsets.all(12),
-                                  child: CircularProgressIndicator(),
+                                  child: CircularProgressIndicator(
+                                      color: AppColors.primary),
                                 ),
                               )
                             : SizedBox(
                                 width: double.infinity,
                                 child: OutlinedButton(
-                                  onPressed: () => ref
-                                      .read(genreMoviesProvider(
-                                              selectedGenre!)
-                                          .notifier)
-                                      .loadMore(),
+                                  onPressed: () => genreMedia ==
+                                          _GenreMedia.movie
+                                      ? ref
+                                          .read(genreMoviesProvider(
+                                                  selectedGenre!)
+                                              .notifier)
+                                          .loadMore()
+                                      : ref
+                                          .read(genreTvMoviesProvider(
+                                                  selectedGenre!)
+                                              .notifier)
+                                          .loadMore(),
                                   child: const Text('Load More'),
                                 ),
                               ),
@@ -266,7 +395,12 @@ class _BrowseView extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   shrinkWrap: true,
                 ),
-                error: (e, _) => const SizedBox.shrink(),
+                error: (_, _) => _BrowseError(
+                  onRetry: () => genreMedia == _GenreMedia.movie
+                      ? ref.invalidate(genreMoviesProvider(selectedGenre!))
+                      : ref.invalidate(
+                          genreTvMoviesProvider(selectedGenre!)),
+                ),
               ),
           ],
         ],
@@ -275,7 +409,86 @@ class _BrowseView extends ConsumerWidget {
   }
 }
 
-// ── Genre chips (horizontal single row) ──────────────────────────────────────
+// ── Genre Media Toggle ────────────────────────────────────────────────────────
+
+class _GenreMediaToggle extends StatelessWidget {
+  final _GenreMedia selected;
+  final ValueChanged<_GenreMedia> onSelect;
+
+  const _GenreMediaToggle(
+      {required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: colors.surfaceVariant,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ToggleOption(
+              label: 'Movies',
+              selected: selected == _GenreMedia.movie,
+              onTap: () => onSelect(_GenreMedia.movie),
+            ),
+            const SizedBox(width: 2),
+            _ToggleOption(
+              label: 'TV Shows',
+              selected: selected == _GenreMedia.tv,
+              onTap: () => onSelect(_GenreMedia.tv),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ToggleOption extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ToggleOption(
+      {required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color:
+              selected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected
+                ? Colors.black
+                : AppThemeColors.of(context).textSecondary,
+            fontSize: 13,
+            fontWeight:
+                selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Genre chips ───────────────────────────────────────────────────────────────
 
 class _GenreChips extends StatelessWidget {
   final List<Genre> genres;
@@ -315,7 +528,8 @@ class _GenreChips extends StatelessWidget {
                       : colors.surfaceVariant,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: selected ? AppColors.primary : colors.border,
+                    color:
+                        selected ? AppColors.primary : colors.border,
                     width: selected ? 1.5 : 0.5,
                   ),
                 ),
@@ -340,7 +554,37 @@ class _GenreChips extends StatelessWidget {
   }
 }
 
-// ── Trending card (poster + rating badge + title/genre below) ─────────────────
+// ── Browse section error ──────────────────────────────────────────────────────
+
+class _BrowseError extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _BrowseError({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline_rounded,
+              size: 32, color: colors.textMuted),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Retry'),
+            style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Trending card ─────────────────────────────────────────────────────────────
 
 class _TrendingCard extends StatelessWidget {
   final Movie movie;
@@ -362,7 +606,6 @@ class _TrendingCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Poster with rating badge
             SizedBox(
               width: 130,
               height: 190,
@@ -379,12 +622,11 @@ class _TrendingCard extends StatelessWidget {
                             fit: BoxFit.cover,
                             placeholder: (ctx, _) =>
                                 _shimmerBox(ctx, colors),
-                            errorWidget: (ctx, e, st) =>
+                            errorWidget: (ctx, _, _) =>
                                 _fallback(colors),
                           )
                         : _fallback(colors),
                   ),
-                  // Rating badge — top right
                   Positioned(
                     top: 8,
                     right: 8,
@@ -395,7 +637,8 @@ class _TrendingCard extends StatelessWidget {
                         color: Colors.black.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: colors.border.withValues(alpha: 0.5),
+                            color:
+                                colors.border.withValues(alpha: 0.5),
                             width: 0.5),
                       ),
                       child: Row(
@@ -467,7 +710,8 @@ class _TrendingCard extends StatelessWidget {
         color: colors.surfaceVariant,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(Icons.movie_outlined, color: colors.textMuted, size: 40),
+      child:
+          Icon(Icons.movie_outlined, color: colors.textMuted, size: 40),
     );
   }
 }
@@ -490,7 +734,8 @@ class _Top10Tile extends StatelessWidget {
         : '';
 
     final inner = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: colors.card,
         borderRadius: BorderRadius.circular(16),
@@ -500,7 +745,6 @@ class _Top10Tile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Rank number
           SizedBox(
             width: 34,
             child: Text(
@@ -519,7 +763,6 @@ class _Top10Tile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          // Thumbnail
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: movie.hasPoster
@@ -538,7 +781,6 @@ class _Top10Tile extends StatelessWidget {
                   ),
           ),
           const SizedBox(width: 12),
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,8 +811,8 @@ class _Top10Tile extends StatelessWidget {
                     ),
                     if (genreName.isNotEmpty) ...[
                       Text(' • ',
-                          style:
-                              TextStyle(color: colors.textMuted, fontSize: 12)),
+                          style: TextStyle(
+                              color: colors.textMuted, fontSize: 12)),
                       Text(
                         genreName,
                         style: TextStyle(
@@ -582,10 +824,13 @@ class _Top10Tile extends StatelessWidget {
               ],
             ),
           ),
-          // Trend icon
           Icon(
-            rank <= 5 ? Icons.trending_up_rounded : Icons.remove_rounded,
-            color: rank <= 5 ? const Color(0xFF4CAF50) : colors.textMuted,
+            rank <= 5
+                ? Icons.trending_up_rounded
+                : Icons.remove_rounded,
+            color: rank <= 5
+                ? const Color(0xFF4CAF50)
+                : colors.textMuted,
             size: 20,
           ),
         ],
@@ -616,7 +861,8 @@ class _AnimatedGoldenBorder extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedGoldenBorder> createState() => _AnimatedGoldenBorderState();
+  State<_AnimatedGoldenBorder> createState() =>
+      _AnimatedGoldenBorderState();
 }
 
 class _AnimatedGoldenBorderState extends State<_AnimatedGoldenBorder>
@@ -666,7 +912,8 @@ class _GoldenBorderPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final rRect = RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
+    final rRect =
+        RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
@@ -685,48 +932,105 @@ class _GoldenBorderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_GoldenBorderPainter old) => old.progress != progress;
+  bool shouldRepaint(_GoldenBorderPainter old) =>
+      old.progress != progress;
 }
 
-// ── Combined Search Results (actors + movies/TV) ──────────────────────────────
+// ── Combined Search Results ───────────────────────────────────────────────────
 
 class _CombinedSearchResults extends ConsumerWidget {
   final String query;
+  final _SearchFilter filter;
+  final ValueChanged<_SearchFilter> onFilterChange;
 
-  const _CombinedSearchResults({required this.query});
+  const _CombinedSearchResults({
+    required this.query,
+    required this.filter,
+    required this.onFilterChange,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final moviesAsync = ref.watch(searchResultsProvider);
     final peopleAsync = ref.watch(searchPeopleProvider);
+    final watched = ref.watch(watchedProvider);
+    final watchLater = ref.watch(watchLaterProvider);
+
+    final watchedIds = watched.map((i) => i.mediaId).toSet();
+    final watchLaterIds = watchLater.map((i) => i.mediaId).toSet();
+    final ratedMap = {
+      for (final i in watched)
+        if (i.userRating != null) i.mediaId: i.userRating!,
+    };
 
     return moviesAsync.when(
-      loading: () => const _ShimmerGrid(padding: EdgeInsets.symmetric(horizontal: 20)),
+      loading: () => const _ShimmerGrid(
+          padding: EdgeInsets.symmetric(horizontal: 20)),
       error: (e, _) => Center(
-        child: Text('Error: $e',
-            style: TextStyle(color: AppThemeColors.of(context).textSecondary)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline_rounded,
+                size: 48,
+                color: AppThemeColors.of(context).textMuted),
+            const SizedBox(height: 12),
+            Text('Search failed',
+                style: TextStyle(
+                    color: AppThemeColors.of(context).textMuted)),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => ref.invalidate(searchResultsProvider),
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Retry'),
+              style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary),
+            ),
+          ],
+        ),
       ),
-      data: (movies) {
+      data: (allMovies) {
         final people = peopleAsync.valueOrNull ?? [];
-        final hasMovies = movies.isNotEmpty;
-        final hasPeople = people.isNotEmpty;
 
-        if (!hasMovies && !hasPeople) {
+        // Apply type filter
+        final movies = filter == _SearchFilter.all
+            ? allMovies
+            : filter == _SearchFilter.movies
+                ? allMovies
+                    .where((m) => m.mediaType == 'movie')
+                    .toList()
+                : allMovies
+                    .where((m) => m.mediaType == 'tv')
+                    .toList();
+
+        final showPeople =
+            filter == _SearchFilter.all && people.isNotEmpty;
+        final hasMovies = movies.isNotEmpty;
+
+        if (allMovies.isEmpty && people.isEmpty) {
           return _EmptyResults(query: query);
         }
 
         return CustomScrollView(
           slivers: [
-            // ── Actors / People section ──────────────────────────────
-            if (hasPeople) ...[
+            // Filter chips
+            SliverToBoxAdapter(
+              child: _SearchFilterRow(
+                filter: filter,
+                onSelect: onFilterChange,
+              ),
+            ),
+
+            // People section
+            if (showPeople) ...[
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
                   child: Text(
                     'People',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -735,16 +1039,22 @@ class _CombinedSearchResults extends ConsumerWidget {
                   height: 110,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: people.length,
                     itemBuilder: (ctx, i) {
                       final person = people[i];
                       final id = person['id'] as int;
-                      final name = person['name'] as String? ?? '';
-                      final profilePath = person['profile_path'] as String?;
-                      final dept = person['known_for_department'] as String? ?? '';
+                      final name =
+                          person['name'] as String? ?? '';
+                      final profilePath =
+                          person['profile_path'] as String?;
+                      final dept =
+                          person['known_for_department'] as String? ??
+                              '';
                       return Padding(
-                        padding: EdgeInsets.only(right: i < people.length - 1 ? 16 : 0),
+                        padding: EdgeInsets.only(
+                            right: i < people.length - 1 ? 16 : 0),
                         child: GestureDetector(
                           onTap: () => ctx.push('/actor/$id'),
                           child: SizedBox(
@@ -754,16 +1064,20 @@ class _CombinedSearchResults extends ConsumerWidget {
                                 CircleAvatar(
                                   radius: 34,
                                   backgroundColor:
-                                      AppThemeColors.of(ctx).surfaceVariant,
-                                  backgroundImage: profilePath != null
-                                      ? CachedNetworkImageProvider(
-                                          AppConstants.posterUrl(profilePath,
-                                              size: '/w185'),
-                                        )
-                                      : null,
+                                      AppThemeColors.of(ctx)
+                                          .surfaceVariant,
+                                  backgroundImage:
+                                      profilePath != null
+                                          ? CachedNetworkImageProvider(
+                                              AppConstants.posterUrl(
+                                                  profilePath,
+                                                  size: '/w185'),
+                                            )
+                                          : null,
                                   child: profilePath == null
                                       ? Icon(Icons.person_rounded,
-                                          color: AppThemeColors.of(ctx).textMuted,
+                                          color: AppThemeColors.of(ctx)
+                                              .textMuted,
                                           size: 30)
                                       : null,
                                 ),
@@ -774,7 +1088,8 @@ class _CombinedSearchResults extends ConsumerWidget {
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: AppThemeColors.of(ctx).textPrimary,
+                                    color: AppThemeColors.of(ctx)
+                                        .textPrimary,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -786,7 +1101,8 @@ class _CombinedSearchResults extends ConsumerWidget {
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: AppThemeColors.of(ctx).textMuted,
+                                      color: AppThemeColors.of(ctx)
+                                          .textMuted,
                                       fontSize: 10,
                                     ),
                                   ),
@@ -801,23 +1117,39 @@ class _CombinedSearchResults extends ConsumerWidget {
               ),
             ],
 
-            // ── Movies / TV section ───────────────────────────────────
+            // Movies/TV section
             if (hasMovies) ...[
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, hasPeople ? 20 : 12, 20, 14),
-                  child: Text(
-                    'Movies & TV',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                  padding: EdgeInsets.fromLTRB(
+                      20, showPeople ? 20 : 16, 20, 14),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Movies & TV',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${movies.length} result${movies.length == 1 ? '' : 's'}',
+                        style: TextStyle(
+                            color:
+                                AppThemeColors.of(context).textMuted,
+                            fontSize: 13),
+                      ),
+                    ],
                   ),
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+                padding:
+                    const EdgeInsets.fromLTRB(20, 0, 20, 40),
                 sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     childAspectRatio: 0.58,
                     crossAxisSpacing: 12,
@@ -826,22 +1158,270 @@ class _CombinedSearchResults extends ConsumerWidget {
                   delegate: SliverChildBuilderDelegate(
                     (ctx, i) {
                       final movie = movies[i];
-                      return MovieCard(
-                        movie: movie,
-                        width: double.infinity,
-                        onTap: () => ctx.push(movie.mediaType == 'tv'
-                            ? '/tv/${movie.id}'
-                            : '/movie/${movie.id}'),
+                      return Stack(
+                        children: [
+                          MovieCard(
+                            movie: movie,
+                            width: double.infinity,
+                            onTap: () => ctx.push(
+                                movie.mediaType == 'tv'
+                                    ? '/tv/${movie.id}'
+                                    : '/movie/${movie.id}'),
+                          ),
+                          _UserStatusBadge(
+                            isWatched:
+                                watchedIds.contains(movie.id),
+                            isWatchLater:
+                                watchLaterIds.contains(movie.id),
+                            userRating: ratedMap[movie.id],
+                          ),
+                        ],
                       );
                     },
                     childCount: movies.length,
                   ),
                 ),
               ),
+            ] else ...[
+              SliverToBoxAdapter(
+                child: _EmptyResults(query: query),
+              ),
             ],
           ],
         );
       },
+    );
+  }
+}
+
+// ── Search Filter Row ─────────────────────────────────────────────────────────
+
+class _SearchFilterRow extends StatelessWidget {
+  final _SearchFilter filter;
+  final ValueChanged<_SearchFilter> onSelect;
+
+  const _SearchFilterRow(
+      {required this.filter, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: Row(
+        children: [
+          _FilterChip(
+            label: 'All',
+            selected: filter == _SearchFilter.all,
+            onTap: () => onSelect(_SearchFilter.all),
+          ),
+          const SizedBox(width: 8),
+          _FilterChip(
+            label: 'Movies',
+            selected: filter == _SearchFilter.movies,
+            onTap: () => onSelect(_SearchFilter.movies),
+          ),
+          const SizedBox(width: 8),
+          _FilterChip(
+            label: 'TV Shows',
+            selected: filter == _SearchFilter.tv,
+            onTap: () => onSelect(_SearchFilter.tv),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip(
+      {required this.label,
+      required this.selected,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : colors.surfaceVariant,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.primary : colors.border,
+            width: selected ? 1.5 : 0.5,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color:
+                selected ? Colors.black : colors.textSecondary,
+            fontSize: 13,
+            fontWeight:
+                selected ? FontWeight.w700 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── User Status Badge ─────────────────────────────────────────────────────────
+
+class _UserStatusBadge extends StatelessWidget {
+  final bool isWatched;
+  final bool isWatchLater;
+  final double? userRating;
+
+  const _UserStatusBadge({
+    required this.isWatched,
+    required this.isWatchLater,
+    this.userRating,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isWatched && !isWatchLater && userRating == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      top: 6,
+      left: 6,
+      child: userRating != null
+          ? Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star_rounded,
+                      size: 10, color: Colors.black),
+                  const SizedBox(width: 2),
+                  Text(
+                    userRating!.toStringAsFixed(1),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isWatched
+                    ? const Color(0xFF4CAF50)
+                    : Colors.black.withValues(alpha: 0.55),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isWatched
+                    ? Icons.check_rounded
+                    : Icons.bookmark_rounded,
+                size: 12,
+                color: Colors.white,
+              ),
+            ),
+    );
+  }
+}
+
+// ── Recent Searches ───────────────────────────────────────────────────────────
+
+class _RecentSearches extends StatelessWidget {
+  final List<String> recents;
+  final ValueChanged<String> onTap;
+  final ValueChanged<String> onRemove;
+  final VoidCallback onClearAll;
+
+  const _RecentSearches({
+    required this.recents,
+    required this.onTap,
+    required this.onRemove,
+    required this.onClearAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 8, 12),
+          child: Row(
+            children: [
+              Text(
+                'Recent',
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: onClearAll,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Clear all',
+                    style: TextStyle(fontSize: 13)),
+              ),
+            ],
+          ),
+        ),
+        ...recents.map(
+          (q) => InkWell(
+            onTap: () => onTap(q),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 20, vertical: 11),
+              child: Row(
+                children: [
+                  Icon(Icons.history_rounded,
+                      size: 18, color: colors.textMuted),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      q,
+                      style: TextStyle(
+                          color: colors.textPrimary, fontSize: 15),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => onRemove(q),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.close_rounded,
+                          size: 16, color: colors.textMuted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -896,9 +1476,12 @@ class _ShimmerGrid extends StatelessWidget {
       highlightColor: c.card,
       child: GridView.builder(
         shrinkWrap: shrinkWrap,
-        physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
+        physics: shrinkWrap
+            ? const NeverScrollableScrollPhysics()
+            : null,
         padding: padding,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate:
+            const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
           childAspectRatio: 0.58,
           crossAxisSpacing: 12,
@@ -908,39 +1491,6 @@ class _ShimmerGrid extends StatelessWidget {
         itemBuilder: (ctx, i) => ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Container(color: c.surfaceVariant),
-        ),
-      ),
-    );
-  }
-}
-
-class _ShimmerChips extends StatelessWidget {
-  const _ShimmerChips();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppThemeColors.of(context);
-    final widths = [72.0, 56.0, 88.0, 64.0, 80.0, 60.0, 76.0];
-    return SizedBox(
-      height: 38,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: widths.length,
-        itemBuilder: (_, i) => Padding(
-          padding: EdgeInsets.only(right: i < widths.length - 1 ? 8 : 0),
-          child: Shimmer.fromColors(
-            baseColor: c.surfaceVariant,
-            highlightColor: c.card,
-            child: Container(
-              width: widths[i],
-              height: 38,
-              decoration: BoxDecoration(
-                color: c.surfaceVariant,
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-          ),
         ),
       ),
     );
@@ -1000,7 +1550,8 @@ class _ShimmerTop10 extends StatelessWidget {
           baseColor: c.surfaceVariant,
           highlightColor: c.card,
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+            margin:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
             height: 86,
             decoration: BoxDecoration(
               color: c.surfaceVariant,
