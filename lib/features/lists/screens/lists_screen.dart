@@ -5,12 +5,20 @@ import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/custom_list.dart';
+import '../../../core/models/movie.dart';
 import '../../../core/models/user_list_item.dart';
 import '../../../core/providers/custom_lists_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/lists_provider.dart';
+import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/google_sign_in_button.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sort order
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum _SortOrder { dateAdded, titleAz, rating, year }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lists Screen
@@ -46,8 +54,6 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
     final watched = ref.watch(watchedProvider);
     final watchLater = ref.watch(watchLaterProvider);
     final customLists = ref.watch(customListsProvider);
-    final isLoading = ref.watch(listsLoadingProvider);
-    final notifier = ref.read(listsProvider.notifier);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -57,14 +63,11 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Header ────────────────────────────────────────────────
                   _Header(
                     watchedCount: watched.length,
                     watchLaterCount: watchLater.length,
                     customListsCount: customLists.length,
                   ),
-
-                  // ── Tab bar ───────────────────────────────────────────────
                   _YellowTabBar(
                     controller: _tabController,
                     tabs: [
@@ -73,34 +76,27 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
                       _TabData(Icons.list_rounded, 'My Lists'),
                     ],
                   ),
-
                   const SizedBox(height: 2),
-
-                  // ── Content ───────────────────────────────────────────────
                   Expanded(
                     child: TabBarView(
                       controller: _tabController,
                       children: [
                         _GridTab(
                           items: watched,
-                          isLoading: isLoading,
                           listType: ListType.watched,
                           emptyImagePath: 'assets/placeholders/watched.png',
                           emptyMessage: 'Nothing watched yet',
                           emptySubMessage:
                               'Mark films as watched to track them here',
-                          notifier: notifier,
                         ),
                         _GridTab(
                           items: watchLater,
-                          isLoading: isLoading,
                           listType: ListType.watchLater,
                           emptyImagePath:
                               'assets/placeholders/watch_later.png',
                           emptyMessage: 'Watch later is empty',
                           emptySubMessage:
                               'Save films and shows to watch them later',
-                          notifier: notifier,
                         ),
                         _MyListsTab(
                           customLists: customLists,
@@ -176,8 +172,6 @@ class _ListsTabViewState extends ConsumerState<ListsTabView>
     final watched = ref.watch(watchedProvider);
     final watchLater = ref.watch(watchLaterProvider);
     final customLists = ref.watch(customListsProvider);
-    final isLoading = ref.watch(listsLoadingProvider);
-    final notifier = ref.read(listsProvider.notifier);
 
     return Column(
       children: [
@@ -196,21 +190,17 @@ class _ListsTabViewState extends ConsumerState<ListsTabView>
             children: [
               _GridTab(
                 items: watched,
-                isLoading: isLoading,
                 listType: ListType.watched,
                 emptyImagePath: 'assets/placeholders/watched.png',
                 emptyMessage: 'Nothing watched yet',
                 emptySubMessage: 'Mark films as watched to track them here',
-                notifier: notifier,
               ),
               _GridTab(
                 items: watchLater,
-                isLoading: isLoading,
                 listType: ListType.watchLater,
                 emptyImagePath: 'assets/placeholders/watch_later.png',
                 emptyMessage: 'Watch later is empty',
                 emptySubMessage: 'Save films and shows to watch them later',
-                notifier: notifier,
               ),
               _MyListsTab(
                 customLists: customLists,
@@ -296,7 +286,7 @@ class _SignInPrompt extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Text(
+            const Text(
               'Sign in to track watched films, build your watchlist, and create custom lists.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -429,28 +419,423 @@ class _YellowTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-      child: Column(
-        children: [
-          TabBar(
-            controller: controller,
-            indicator: const UnderlineTabIndicator(
-              borderSide: BorderSide(color: AppColors.primary, width: 2.5),
-              insets: EdgeInsets.symmetric(horizontal: 16),
-            ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            dividerColor: const Color(0xFF1A1A1A),
-            labelColor: AppColors.primary,
-            unselectedLabelColor: const Color(0xFF555555),
-            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            tabs: tabs.map((t) => _buildTab(t)).toList(),
+      child: TabBar(
+        controller: controller,
+        indicator: const UnderlineTabIndicator(
+          borderSide: BorderSide(color: AppColors.primary, width: 2.5),
+          insets: EdgeInsets.symmetric(horizontal: 16),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: const Color(0xFF1A1A1A),
+        labelColor: AppColors.primary,
+        unselectedLabelColor: const Color(0xFF555555),
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+        unselectedLabelStyle:
+            const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+        tabs: tabs.map((t) => Tab(text: t.label)).toList(),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Grid Tab — Watched / Watch Later
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GridTab extends ConsumerStatefulWidget {
+  final List<UserListItem> items;
+  final ListType listType;
+  final String emptyImagePath;
+  final String emptyMessage;
+  final String emptySubMessage;
+
+  const _GridTab({
+    required this.items,
+    required this.listType,
+    required this.emptyImagePath,
+    required this.emptyMessage,
+    required this.emptySubMessage,
+  });
+
+  @override
+  ConsumerState<_GridTab> createState() => _GridTabState();
+}
+
+class _GridTabState extends ConsumerState<_GridTab> {
+  final _searchCtrl = TextEditingController();
+  String _search = '';
+  _SortOrder _sort = _SortOrder.dateAdded;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<UserListItem> get _filtered {
+    var items = widget.items;
+    if (_search.isNotEmpty) {
+      final q = _search.toLowerCase();
+      items = items.where((e) => e.title.toLowerCase().contains(q)).toList();
+    }
+    switch (_sort) {
+      case _SortOrder.dateAdded:
+        items = [...items]..sort((a, b) => b.addedAt.compareTo(a.addedAt));
+      case _SortOrder.titleAz:
+        items = [...items]..sort((a, b) => a.title.compareTo(b.title));
+      case _SortOrder.rating:
+        items = [...items]
+          ..sort((a, b) =>
+              (b.userRating ?? -1).compareTo(a.userRating ?? -1));
+      case _SortOrder.year:
+        items = [...items]..sort((a, b) => b.year.compareTo(a.year));
+    }
+    return items;
+  }
+
+  String get _sortLabel {
+    switch (_sort) {
+      case _SortOrder.dateAdded:
+        return 'Date Added';
+      case _SortOrder.titleAz:
+        return 'Title A–Z';
+      case _SortOrder.rating:
+        return 'Rating';
+      case _SortOrder.year:
+        return 'Year';
+    }
+  }
+
+  void _showSortSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0E0E0E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 12, 0, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _SheetHandle(),
+              const SizedBox(height: 12),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Sort by',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              for (final order in _SortOrder.values)
+                ListTile(
+                  onTap: () {
+                    setState(() => _sort = order);
+                    Navigator.pop(ctx);
+                  },
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20),
+                  title: Text(
+                    _sortName(order),
+                    style: TextStyle(
+                      color: _sort == order
+                          ? AppColors.primary
+                          : Colors.white,
+                      fontWeight: _sort == order
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      fontSize: 15,
+                    ),
+                  ),
+                  trailing: _sort == order
+                      ? const Icon(Icons.check_rounded,
+                          color: AppColors.primary, size: 20)
+                      : null,
+                ),
+              const SizedBox(height: 4),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildTab(_TabData t) => Tab(text: t.label);
+  String _sortName(_SortOrder o) {
+    switch (o) {
+      case _SortOrder.dateAdded:
+        return 'Date Added';
+      case _SortOrder.titleAz:
+        return 'Title A–Z';
+      case _SortOrder.rating:
+        return 'My Rating';
+      case _SortOrder.year:
+        return 'Year';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ref.watch(listsLoadingProvider);
+    final notifier = ref.read(listsProvider.notifier);
+    final filtered = _filtered;
+
+    return Column(
+      children: [
+        // ── Search + Sort bar ──────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: (v) => setState(() => _search = v),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500),
+                  cursorColor: AppColors.primary,
+                  decoration: InputDecoration(
+                    hintText: 'Search…',
+                    hintStyle: const TextStyle(
+                        color: Color(0xFF404040), fontSize: 14),
+                    filled: true,
+                    fillColor: const Color(0xFF111111),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 0),
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        color: Color(0xFF555555), size: 20),
+                    suffixIcon: _search.isNotEmpty
+                        ? IconButton(
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _search = '');
+                            },
+                            icon: const Icon(Icons.close_rounded,
+                                color: Color(0xFF555555), size: 18),
+                            splashRadius: 16,
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                          color: Color(0xFF222222), width: 1),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                          color: Color(0xFF222222), width: 1),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                          color: AppColors.primary, width: 1.5),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _showSortSheet,
+                child: Container(
+                  height: 46,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF111111),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF222222)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.sort_rounded,
+                          color: AppColors.primary, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        _sortLabel,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Grid ──────────────────────────────────────────────────────────
+        Expanded(
+          child: isLoading
+              ? Shimmer.fromColors(
+                  baseColor: const Color(0xFF111111),
+                  highlightColor: const Color(0xFF1E1E1E),
+                  child: GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 0.56,
+                    ),
+                    itemCount: 9,
+                    itemBuilder: (ctx, i) => ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(color: const Color(0xFF111111)),
+                    ),
+                  ),
+                )
+              : filtered.isEmpty
+                  ? RefreshIndicator(
+                      color: AppColors.primary,
+                      backgroundColor: const Color(0xFF111111),
+                      onRefresh: () async {
+                        await notifier.loadFromSupabase();
+                      },
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: SizedBox(
+                          height: 400,
+                          child: _search.isNotEmpty
+                              ? _EmptyState(
+                                  message: 'No results for "$_search"',
+                                  subMessage: 'Try a different search term',
+                                )
+                              : _EmptyState(
+                                  imagePath: widget.emptyImagePath,
+                                  message: widget.emptyMessage,
+                                  subMessage: widget.emptySubMessage,
+                                ),
+                        ),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      color: AppColors.primary,
+                      backgroundColor: const Color(0xFF111111),
+                      onRefresh: () async {
+                        await notifier.loadFromSupabase();
+                      },
+                      child: GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 0.56,
+                        ),
+                        itemCount: filtered.length,
+                        itemBuilder: (ctx, i) => _PosterCard(
+                          item: filtered[i],
+                          onTap: () => context.push(
+                              filtered[i].mediaType == 'tv'
+                                  ? '/tv/${filtered[i].mediaId}'
+                                  : '/movie/${filtered[i].mediaId}'),
+                          onRemove: () =>
+                              _confirmRemove(context, filtered[i], notifier),
+                        ),
+                      ),
+                    ),
+        ),
+      ],
+    );
+  }
+
+  void _confirmRemove(
+      BuildContext context, UserListItem item, ListsNotifier notifier) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0E0E0E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _SheetHandle(),
+              const SizedBox(height: 20),
+              Text(
+                item.title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Remove from this list?',
+                style:
+                    TextStyle(color: Color(0xFF666666), fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(sheetCtx),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF888888),
+                        side: const BorderSide(color: Color(0xFF2A2A2A)),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Cancel',
+                          style:
+                              TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        Navigator.pop(sheetCtx);
+                        notifier.removeFromList(
+                            widget.listType, item.mediaId);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Remove',
+                          style:
+                              TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -505,11 +890,13 @@ class _MyListsTab extends ConsumerWidget {
                     context: ctx,
                     backgroundColor: const Color(0xFF0E0E0E),
                     shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(24)),
                     ),
                     builder: (sheetCtx) => SafeArea(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                        padding:
+                            const EdgeInsets.fromLTRB(20, 16, 20, 12),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -519,22 +906,30 @@ class _MyListsTab extends ConsumerWidget {
                               width: 56,
                               height: 56,
                               decoration: BoxDecoration(
-                                color: AppColors.error.withValues(alpha: 0.12),
+                                color: AppColors.error
+                                    .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                                border: Border.all(
+                                    color: AppColors.error
+                                        .withValues(alpha: 0.3)),
                               ),
-                              child: const Icon(Icons.delete_rounded, color: AppColors.error, size: 26),
+                              child: const Icon(Icons.delete_rounded,
+                                  color: AppColors.error, size: 26),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'Delete "${list.name}"?',
-                              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 6),
                             Text(
                               'This will permanently remove this list and its ${list.items.length} items.',
-                              style: const TextStyle(color: Color(0xFF666666), fontSize: 13),
+                              style: const TextStyle(
+                                  color: Color(0xFF666666), fontSize: 13),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 24),
@@ -547,12 +942,20 @@ class _MyListsTab extends ConsumerWidget {
                                       Navigator.pop(sheetCtx);
                                     },
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF888888),
-                                      side: const BorderSide(color: Color(0xFF2A2A2A)),
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      foregroundColor:
+                                          const Color(0xFF888888),
+                                      side: const BorderSide(
+                                          color: Color(0xFF2A2A2A)),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
                                     ),
-                                    child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                                    child: const Text('Cancel',
+                                        style: TextStyle(
+                                            fontWeight:
+                                                FontWeight.w600)),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -564,10 +967,16 @@ class _MyListsTab extends ConsumerWidget {
                                     },
                                     style: FilledButton.styleFrom(
                                       backgroundColor: AppColors.error,
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
                                     ),
-                                    child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w700)),
+                                    child: const Text('Delete',
+                                        style: TextStyle(
+                                            fontWeight:
+                                                FontWeight.w700)),
                                   ),
                                 ),
                               ],
@@ -579,7 +988,8 @@ class _MyListsTab extends ConsumerWidget {
                   );
                   return confirmed;
                 },
-                onDismissed: (_) => ref.read(customListsProvider.notifier).deleteList(list.id),
+                onDismissed: (_) =>
+                    ref.read(customListsProvider.notifier).deleteList(list.id),
                 background: Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
@@ -591,9 +1001,14 @@ class _MyListsTab extends ConsumerWidget {
                   child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.delete_rounded, color: Colors.white, size: 24),
+                      Icon(Icons.delete_rounded,
+                          color: Colors.white, size: 24),
                       SizedBox(height: 4),
-                      Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                      Text('Delete',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700)),
                     ],
                   ),
                 ),
@@ -626,11 +1041,13 @@ class _MyListsTab extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ListDetailSheet(list: list, allItems: allItems),
+      builder: (_) => _ListDetailSheet(
+          list: list, allItems: allItems, outerContext: context),
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, CustomList list) {
+  void _confirmDelete(
+      BuildContext context, WidgetRef ref, CustomList list) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF0E0E0E),
@@ -651,9 +1068,11 @@ class _MyListsTab extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: AppColors.error.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.3)),
                 ),
-                child: const Icon(Icons.delete_rounded, color: AppColors.error, size: 26),
+                child: const Icon(Icons.delete_rounded,
+                    color: AppColors.error, size: 26),
               ),
               const SizedBox(height: 16),
               Text(
@@ -668,7 +1087,8 @@ class _MyListsTab extends ConsumerWidget {
               const SizedBox(height: 6),
               Text(
                 'This will permanently remove this list and its ${list.items.length} items.',
-                style: const TextStyle(color: Color(0xFF666666), fontSize: 13),
+                style: const TextStyle(
+                    color: Color(0xFF666666), fontSize: 13),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -680,11 +1100,14 @@ class _MyListsTab extends ConsumerWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF888888),
                         side: const BorderSide(color: Color(0xFF2A2A2A)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                      child: const Text('Cancel',
+                          style:
+                              TextStyle(fontWeight: FontWeight.w600)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -692,15 +1115,20 @@ class _MyListsTab extends ConsumerWidget {
                     child: FilledButton(
                       onPressed: () {
                         Navigator.pop(ctx);
-                        ref.read(customListsProvider.notifier).deleteList(list.id);
+                        ref
+                            .read(customListsProvider.notifier)
+                            .deleteList(list.id);
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.error,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w700)),
+                      child: const Text('Delete',
+                          style:
+                              TextStyle(fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ],
@@ -712,7 +1140,8 @@ class _MyListsTab extends ConsumerWidget {
     );
   }
 
-  void _showRenameSheet(BuildContext context, WidgetRef ref, CustomList list) {
+  void _showRenameSheet(
+      BuildContext context, WidgetRef ref, CustomList list) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -762,27 +1191,26 @@ class _CustomListCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Poster strip
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(15)),
               child: SizedBox(
                 height: 100,
                 child: previews.isEmpty
                     ? Container(
                         color: const Color(0xFF111111),
                         child: const Center(
-                          child: Icon(Icons.list_rounded, color: Color(0xFF333333), size: 36),
+                          child: Icon(Icons.list_rounded,
+                              color: Color(0xFF333333), size: 36),
                         ),
                       )
                     : _PosterStrip(previews: previews),
               ),
             ),
-            // Info row
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: Row(
                 children: [
-                  // Yellow accent bar
                   Container(
                     width: 3,
                     height: 36,
@@ -809,7 +1237,8 @@ class _CustomListCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           '${list.items.length} ${list.items.length == 1 ? 'title' : 'titles'}',
-                          style: const TextStyle(color: Color(0xFF555555), fontSize: 12),
+                          style: const TextStyle(
+                              color: Color(0xFF555555), fontSize: 12),
                         ),
                       ],
                     ),
@@ -822,9 +1251,12 @@ class _CustomListCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                        border: Border.all(
+                            color:
+                                AppColors.primary.withValues(alpha: 0.25)),
                       ),
-                      child: const Icon(Icons.edit_rounded, color: AppColors.primary, size: 15),
+                      child: const Icon(Icons.edit_rounded,
+                          color: AppColors.primary, size: 15),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -835,7 +1267,8 @@ class _CustomListCard extends StatelessWidget {
                       color: const Color(0xFF1A1A1A),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.chevron_right_rounded, color: Color(0xFF555555), size: 18),
+                    child: const Icon(Icons.chevron_right_rounded,
+                        color: Color(0xFF555555), size: 18),
                   ),
                 ],
               ),
@@ -929,7 +1362,8 @@ class _PosterStrip extends StatelessWidget {
   Widget _fallback() => Container(
         color: const Color(0xFF111111),
         child: const Center(
-          child: Icon(Icons.movie_rounded, size: 20, color: Color(0xFF333333)),
+          child: Icon(Icons.movie_rounded,
+              size: 20, color: Color(0xFF333333)),
         ),
       );
 }
@@ -941,8 +1375,13 @@ class _PosterStrip extends StatelessWidget {
 class _ListDetailSheet extends ConsumerStatefulWidget {
   final CustomList list;
   final List<UserListItem> allItems;
+  final BuildContext outerContext;
 
-  const _ListDetailSheet({required this.list, required this.allItems});
+  const _ListDetailSheet({
+    required this.list,
+    required this.allItems,
+    required this.outerContext,
+  });
 
   @override
   ConsumerState<_ListDetailSheet> createState() => _ListDetailSheetState();
@@ -951,6 +1390,10 @@ class _ListDetailSheet extends ConsumerStatefulWidget {
 class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  final _addSearchCtrl = TextEditingController();
+  String _addQuery = '';
+  List<Movie> _tmdbResults = [];
+  bool _tmdbSearching = false;
 
   @override
   void initState() {
@@ -961,7 +1404,27 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
   @override
   void dispose() {
     _tab.dispose();
+    _addSearchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _searchTmdb(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _tmdbResults = [];
+        _tmdbSearching = false;
+      });
+      return;
+    }
+    setState(() => _tmdbSearching = true);
+    try {
+      final service = ref.read(tmdbServiceProvider);
+      final results = await service.searchMulti(query);
+      if (mounted) setState(() => _tmdbResults = results);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _tmdbSearching = false);
+    }
   }
 
   @override
@@ -984,17 +1447,19 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
       ),
       child: Column(
         children: [
-          // Top bar with back arrow
+          // Top bar
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 12, 16, 4),
             child: Row(
               children: [
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white, size: 18),
                   style: IconButton.styleFrom(
                     backgroundColor: const Color(0xFF1A1A1A),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                     fixedSize: const Size(36, 36),
                   ),
                 ),
@@ -1012,11 +1477,13 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     '${list.items.length} titles',
@@ -1049,8 +1516,10 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
               dividerColor: Colors.transparent,
               labelColor: Colors.black,
               unselectedLabelColor: const Color(0xFF555555),
-              labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              labelStyle:
+                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              unselectedLabelStyle:
+                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               padding: const EdgeInsets.all(3),
               tabs: const [
                 Tab(text: 'In List'),
@@ -1063,47 +1532,192 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
             child: TabBarView(
               controller: _tab,
               children: [
-                // In list
+                // ── In List (drag-to-reorder) ──────────────────────────────
                 list.items.isEmpty
                     ? _EmptyState(
                         message: 'List is empty',
-                        subMessage: 'Add titles from the "Add Titles" tab',
+                        subMessage:
+                            'Add titles from the "Add Titles" tab',
                       )
-                    : GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 10,
-                          childAspectRatio: 0.56,
-                        ),
+                    : ReorderableListView.builder(
+                        padding:
+                            const EdgeInsets.fromLTRB(16, 0, 16, 24),
                         itemCount: list.items.length,
-                        itemBuilder: (ctx, i) => _PosterCard(
-                          item: list.items[i],
-                          onTap: () => ctx.push(list.items[i].mediaType == 'tv'
-                              ? '/tv/${list.items[i].mediaId}'
-                              : '/movie/${list.items[i].mediaId}'),
-                          onRemove: () => notifier.removeItem(list.id, list.items[i].mediaId),
-                        ),
-                      ),
-
-                // Add titles
-                available.isEmpty
-                    ? _EmptyState(
-                        message: 'All titles added',
-                        subMessage: 'All your watched/saved titles are in this list',
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        itemCount: available.length,
+                        onReorder: (oldIndex, newIndex) {
+                          if (newIndex > oldIndex) newIndex--;
+                          notifier.reorderItems(
+                              list.id, oldIndex, newIndex);
+                        },
                         itemBuilder: (ctx, i) {
-                          final item = available[i];
-                          return _AddTitleRow(
+                          final item = list.items[i];
+                          return _ListDetailRow(
+                            key: ValueKey(item.mediaId),
                             item: item,
-                            onAdd: () => notifier.addItem(list.id, item),
+                            onTap: () {
+                              Navigator.pop(context);
+                              widget.outerContext.push(
+                                item.mediaType == 'tv'
+                                    ? '/tv/${item.mediaId}'
+                                    : '/movie/${item.mediaId}',
+                              );
+                            },
+                            onRemove: () =>
+                                notifier.removeItem(list.id, item.mediaId),
                           );
                         },
                       ),
+
+                // ── Add Titles ─────────────────────────────────────────────
+                Column(
+                  children: [
+                    Padding(
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: TextField(
+                        controller: _addSearchCtrl,
+                        onChanged: (v) {
+                          setState(() => _addQuery = v);
+                          if (v.trim().isEmpty) {
+                            setState(() {
+                              _tmdbResults = [];
+                              _tmdbSearching = false;
+                            });
+                          } else {
+                            _searchTmdb(v);
+                          }
+                        },
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500),
+                        cursorColor: AppColors.primary,
+                        decoration: InputDecoration(
+                          hintText: 'Search any movie or show…',
+                          hintStyle: const TextStyle(
+                              color: Color(0xFF404040),
+                              fontSize: 13),
+                          filled: true,
+                          fillColor: const Color(0xFF111111),
+                          isDense: true,
+                          contentPadding:
+                              const EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 0),
+                          prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              color: Color(0xFF555555),
+                              size: 20),
+                          suffixIcon: _addQuery.isNotEmpty
+                              ? IconButton(
+                                  onPressed: () {
+                                    _addSearchCtrl.clear();
+                                    setState(() {
+                                      _addQuery = '';
+                                      _tmdbResults = [];
+                                    });
+                                  },
+                                  icon: const Icon(
+                                      Icons.close_rounded,
+                                      color: Color(0xFF555555),
+                                      size: 18),
+                                  splashRadius: 16,
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF222222), width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF222222), width: 1),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: AppColors.primary, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: _addQuery.trim().isEmpty
+                          // Show from watched/watchLater
+                          ? available.isEmpty
+                              ? _EmptyState(
+                                  message: 'All titles added',
+                                  subMessage:
+                                      'Search above to add any movie or show',
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      16, 0, 16, 24),
+                                  itemCount: available.length,
+                                  itemBuilder: (ctx, i) {
+                                    final item = available[i];
+                                    return _AddTitleRow(
+                                      item: item,
+                                      onAdd: () =>
+                                          notifier.addItem(list.id, item),
+                                    );
+                                  },
+                                )
+                          // Show TMDB search results
+                          : _tmdbSearching
+                              ? const Center(
+                                  child: CircularProgressIndicator(
+                                      color: AppColors.primary,
+                                      strokeWidth: 2),
+                                )
+                              : _tmdbResults.isEmpty
+                                  ? _EmptyState(
+                                      message:
+                                          'No results for "$_addQuery"',
+                                      subMessage: 'Try another title',
+                                    )
+                                  : ListView.builder(
+                                      padding:
+                                          const EdgeInsets.fromLTRB(
+                                              16, 0, 16, 24),
+                                      itemCount: _tmdbResults.length,
+                                      itemBuilder: (ctx, i) {
+                                        final movie = _tmdbResults[i];
+                                        final alreadyIn = list.items.any(
+                                            (e) =>
+                                                e.mediaId == movie.id);
+                                        return _TmdbTitleRow(
+                                          movie: movie,
+                                          alreadyIn: alreadyIn,
+                                          onAdd: alreadyIn
+                                              ? null
+                                              : () {
+                                                  final item =
+                                                      UserListItem(
+                                                    mediaId: movie.id,
+                                                    title: movie.title,
+                                                    posterPath:
+                                                        movie.posterPath,
+                                                    releaseDate:
+                                                        movie.releaseDate,
+                                                    voteAverage:
+                                                        movie.voteAverage,
+                                                    listType:
+                                                        ListType.custom,
+                                                    mediaType:
+                                                        movie.mediaType,
+                                                    addedAt:
+                                                        DateTime.now(),
+                                                  );
+                                                  notifier.addItem(
+                                                      list.id, item);
+                                                  setState(() {});
+                                                },
+                                        );
+                                      },
+                                    ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -1113,7 +1727,103 @@ class _ListDetailSheetState extends ConsumerState<_ListDetailSheet>
   }
 }
 
-// Add title row
+// ─────────────────────────────────────────────────────────────────────────────
+// List Detail Row (reorderable)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ListDetailRow extends StatelessWidget {
+  final UserListItem item;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _ListDetailRow({
+    super.key,
+    required this.item,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D0D0D),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF1A1A1A)),
+      ),
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: item.posterPath != null
+              ? CachedNetworkImage(
+                  imageUrl: AppConstants.posterUrl(item.posterPath!),
+                  width: 38,
+                  height: 56,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, _, _) => _fallback(),
+                )
+              : _fallback(),
+        ),
+        title: Text(
+          item.title,
+          style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 14),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          item.year.isNotEmpty
+              ? item.year
+              : item.mediaType == 'tv'
+                  ? 'TV Show'
+                  : 'Movie',
+          style:
+              const TextStyle(color: Color(0xFF555555), fontSize: 12),
+        ),
+        onTap: onTap,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.remove_rounded,
+                    color: AppColors.error, size: 16),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.drag_handle_rounded,
+                color: Color(0xFF444444), size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallback() => Container(
+        width: 38,
+        height: 56,
+        color: const Color(0xFF111111),
+        child: const Icon(Icons.movie_rounded,
+            size: 16, color: Color(0xFF333333)),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Add Title Row (from watched/watchLater)
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _AddTitleRow extends StatelessWidget {
   final UserListItem item;
   final VoidCallback onAdd;
@@ -1130,7 +1840,8 @@ class _AddTitleRow extends StatelessWidget {
         border: Border.all(color: const Color(0xFF1A1A1A)),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: item.posterPath != null
@@ -1145,13 +1856,21 @@ class _AddTitleRow extends StatelessWidget {
         ),
         title: Text(
           item.title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+          style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 14),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
-          item.year.isNotEmpty ? item.year : item.mediaType == 'tv' ? 'TV Show' : 'Movie',
-          style: const TextStyle(color: Color(0xFF555555), fontSize: 12),
+          item.year.isNotEmpty
+              ? item.year
+              : item.mediaType == 'tv'
+                  ? 'TV Show'
+                  : 'Movie',
+          style:
+              const TextStyle(color: Color(0xFF555555), fontSize: 12),
         ),
         trailing: GestureDetector(
           onTap: onAdd,
@@ -1162,7 +1881,8 @@ class _AddTitleRow extends StatelessWidget {
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.add_rounded, color: Colors.black, size: 20),
+            child:
+                const Icon(Icons.add_rounded, color: Colors.black, size: 20),
           ),
         ),
       ),
@@ -1173,7 +1893,107 @@ class _AddTitleRow extends StatelessWidget {
         width: 38,
         height: 56,
         color: const Color(0xFF111111),
-        child: const Icon(Icons.movie_rounded, size: 16, color: Color(0xFF333333)),
+        child: const Icon(Icons.movie_rounded,
+            size: 16, color: Color(0xFF333333)),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TMDB Title Row (from search)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TmdbTitleRow extends StatelessWidget {
+  final Movie movie;
+  final bool alreadyIn;
+  final VoidCallback? onAdd;
+
+  const _TmdbTitleRow({
+    required this.movie,
+    required this.alreadyIn,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D0D0D),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: alreadyIn
+              ? AppColors.primary.withValues(alpha: 0.3)
+              : const Color(0xFF1A1A1A),
+        ),
+      ),
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: movie.posterPath != null
+              ? CachedNetworkImage(
+                  imageUrl: AppConstants.posterUrl(movie.posterPath!),
+                  width: 38,
+                  height: 56,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, _, _) => _fallback(),
+                )
+              : _fallback(),
+        ),
+        title: Text(
+          movie.title,
+          style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 14),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          [
+            movie.releaseDate?.substring(0, 4) ?? '',
+            movie.mediaType == 'tv' ? 'TV Show' : 'Movie',
+          ].where((s) => s.isNotEmpty).join(' · '),
+          style:
+              const TextStyle(color: Color(0xFF555555), fontSize: 12),
+        ),
+        trailing: alreadyIn
+            ? Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.4)),
+                ),
+                child: const Icon(Icons.check_rounded,
+                    color: AppColors.primary, size: 18),
+              )
+            : GestureDetector(
+                onTap: onAdd,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.add_rounded,
+                      color: Colors.black, size: 20),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _fallback() => Container(
+        width: 38,
+        height: 56,
+        color: const Color(0xFF111111),
+        child: const Icon(Icons.movie_rounded,
+            size: 16, color: Color(0xFF333333)),
       );
 }
 
@@ -1214,7 +2034,8 @@ class _CreateListSheetState extends State<_CreateListSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         decoration: const BoxDecoration(
           color: Color(0xFF0A0A0A),
@@ -1244,11 +2065,15 @@ class _CreateListSheetState extends State<_CreateListSheet> {
             TextField(
               controller: _ctrl,
               autofocus: true,
-              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600),
               cursorColor: AppColors.primary,
               decoration: InputDecoration(
                 hintText: 'e.g. Action Favourites',
-                hintStyle: const TextStyle(color: Color(0xFF333333), fontSize: 15),
+                hintStyle: const TextStyle(
+                    color: Color(0xFF333333), fontSize: 15),
                 filled: true,
                 fillColor: const Color(0xFF111111),
                 border: OutlineInputBorder(
@@ -1257,9 +2082,11 @@ class _CreateListSheetState extends State<_CreateListSheet> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: const BorderSide(
+                      color: AppColors.primary, width: 1.5),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 16),
               ),
               onSubmitted: (_) => _submit(),
             ),
@@ -1272,11 +2099,15 @@ class _CreateListSheetState extends State<_CreateListSheet> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 child: Text(
-                  widget.initialName != null ? 'Save Changes' : 'Create List',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  widget.initialName != null
+                      ? 'Save Changes'
+                      : 'Create List',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 15),
                 ),
               ),
             ),
@@ -1333,153 +2164,7 @@ class _CreateButton extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Grid Tab
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _GridTab extends StatelessWidget {
-  final List<UserListItem> items;
-  final bool isLoading;
-  final ListType listType;
-  final String emptyImagePath;
-  final String emptyMessage;
-  final String emptySubMessage;
-  final ListsNotifier notifier;
-
-  const _GridTab({
-    required this.items,
-    required this.isLoading,
-    required this.listType,
-    required this.emptyImagePath,
-    required this.emptyMessage,
-    required this.emptySubMessage,
-    required this.notifier,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (isLoading) {
-      return Shimmer.fromColors(
-        baseColor: const Color(0xFF111111),
-        highlightColor: const Color(0xFF1E1E1E),
-        child: GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 10,
-            childAspectRatio: 0.56,
-          ),
-          itemCount: 9,
-          itemBuilder: (ctx, i) => ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Container(color: const Color(0xFF111111)),
-          ),
-        ),
-      );
-    }
-
-    if (items.isEmpty) {
-      return _EmptyState(
-        imagePath: emptyImagePath,
-        message: emptyMessage,
-        subMessage: emptySubMessage,
-      );
-    }
-
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 10,
-        childAspectRatio: 0.56,
-      ),
-      itemCount: items.length,
-      itemBuilder: (ctx, i) => _PosterCard(
-        item: items[i],
-        onTap: () => ctx.push(items[i].mediaType == 'tv'
-            ? '/tv/${items[i].mediaId}'
-            : '/movie/${items[i].mediaId}'),
-        onRemove: () => _confirmRemove(ctx, items[i]),
-      ),
-    );
-  }
-
-  void _confirmRemove(BuildContext context, UserListItem item) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _SheetHandle(),
-              const SizedBox(height: 20),
-              Text(
-                item.title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Remove from this list?',
-                style: TextStyle(color: Color(0xFF666666), fontSize: 13),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF888888),
-                        side: const BorderSide(color: Color(0xFF2A2A2A)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        notifier.removeFromList(listType, item.mediaId);
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.error,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Remove', style: TextStyle(fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Poster Card
+// Poster Card (Watched / Watch Later grid)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PosterCard extends StatelessWidget {
@@ -1503,7 +2188,6 @@ class _PosterCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Poster image
             item.posterPath != null
                 ? CachedNetworkImage(
                     imageUrl: AppConstants.posterUrl(item.posterPath!),
@@ -1517,7 +2201,6 @@ class _PosterCard extends StatelessWidget {
                   )
                 : _fallback(),
 
-            // Bottom gradient + info
             Positioned(
               bottom: 0,
               left: 0,
@@ -1550,7 +2233,8 @@ class _PosterCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        const Icon(Icons.star_rounded, color: AppColors.primary, size: 10),
+                        const Icon(Icons.star_rounded,
+                            color: AppColors.primary, size: 10),
                         const SizedBox(width: 2),
                         Text(
                           item.voteAverage.toStringAsFixed(1),
@@ -1564,7 +2248,8 @@ class _PosterCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             item.year,
-                            style: const TextStyle(color: Color(0xAAFFFFFF), fontSize: 9),
+                            style: const TextStyle(
+                                color: Color(0xAAFFFFFF), fontSize: 9),
                           ),
                         ],
                       ],
@@ -1574,13 +2259,13 @@ class _PosterCard extends StatelessWidget {
               ),
             ),
 
-            // User rating badge
             if (item.userRating != null)
               Positioned(
                 top: 6,
                 right: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(6),
@@ -1604,7 +2289,8 @@ class _PosterCard extends StatelessWidget {
   Widget _fallback() => Container(
         color: const Color(0xFF111111),
         child: const Center(
-          child: Icon(Icons.movie_outlined, color: Color(0xFF333333), size: 32),
+          child: Icon(Icons.movie_outlined,
+              color: Color(0xFF333333), size: 32),
         ),
       );
 }
@@ -1633,7 +2319,8 @@ class _EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (imagePath != null)
-              Image.asset(imagePath!, width: 250, height: 250, fit: BoxFit.contain),
+              Image.asset(imagePath!,
+                  width: 250, height: 250, fit: BoxFit.contain),
             const SizedBox(height: 20),
             Text(
               message,
@@ -1647,7 +2334,8 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               subMessage,
-              style: const TextStyle(color: Color(0xFF555555), fontSize: 13, height: 1.5),
+              style: const TextStyle(
+                  color: Color(0xFF555555), fontSize: 13, height: 1.5),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1706,9 +2394,13 @@ class _OptionTile extends StatelessWidget {
       ),
       title: Text(
         label,
-        style: TextStyle(color: labelColor, fontWeight: FontWeight.w600, fontSize: 15),
+        style: TextStyle(
+            color: labelColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 15),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF333333), size: 18),
+      trailing: const Icon(Icons.chevron_right_rounded,
+          color: Color(0xFF333333), size: 18),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_list_item.dart';
+import '../models/custom_list.dart';
 class SupabaseService {
   static SupabaseClient get client => Supabase.instance.client;
 
@@ -110,6 +111,45 @@ class SupabaseService {
         .eq('media_id', mediaId);
   }
 
+  // ── Custom Lists (cloud sync) ─────────────────────────────────────────────
+  // Requires a Supabase table:
+  //   create table custom_lists (
+  //     user_id uuid references auth.users on delete cascade primary key,
+  //     data    jsonb not null default '[]',
+  //     updated_at timestamptz not null default now()
+  //   );
+  //   alter table custom_lists enable row level security;
+  //   create policy "own" on custom_lists for all using (auth.uid() = user_id);
+
+  Future<List<CustomList>> fetchCustomLists() async {
+    final user = currentUser;
+    if (user == null) return [];
+    try {
+      final row = await client
+          .from('custom_lists')
+          .select('data')
+          .eq('user_id', user.id)
+          .maybeSingle();
+      if (row == null) return [];
+      return (row['data'] as List<dynamic>)
+          .map((e) => CustomList.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveCustomLists(List<CustomList> lists) async {
+    final user = currentUser;
+    if (user == null) return;
+    try {
+      await client.from('custom_lists').upsert({
+        'user_id': user.id,
+        'data': lists.map((e) => e.toJson()).toList(),
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'user_id');
+    } catch (_) {}
+  }
 }
 
 final supabaseService = SupabaseService();

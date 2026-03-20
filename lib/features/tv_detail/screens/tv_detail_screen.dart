@@ -17,6 +17,7 @@ import '../../../shared/widgets/rating_badge.dart';
 import '../../../shared/widgets/movie_card.dart';
 import '../../movie_detail/widgets/share_rating_sheet.dart';
 import '../../movie_detail/widgets/recommend_share_sheet.dart';
+import '../../../shared/widgets/add_to_list_sheet.dart';
 
 class TvDetailScreen extends ConsumerWidget {
   final int tvId;
@@ -531,8 +532,45 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
             activeColor: AppColors.warning,
             onTap: () => _shareRecommendation(context, tv),
           ),
+          const SizedBox(width: 12),
+          _RoundActionBtn(
+            icon: Icons.playlist_add_rounded,
+            label: 'Add to List',
+            active: false,
+            activeColor: AppColors.primary,
+            onTap: () {
+              if (!ref.read(isSignedInProvider)) {
+                _requireSignIn(context);
+                return;
+              }
+              _showAddToListSheet(context, tv);
+            },
+          ),
         ],
       ),
+    );
+  }
+
+  void _showAddToListSheet(BuildContext context, TvDetail tv) {
+    final tvAsItem = UserListItem(
+      mediaId: tv.id,
+      title: tv.title,
+      posterPath: tv.posterPath,
+      releaseDate: tv.firstAirDate,
+      voteAverage: tv.voteAverage,
+      listType: ListType.custom,
+      mediaType: 'tv',
+      addedAt: DateTime.now(),
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0A0A0A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => AddToListSheet(item: tvAsItem),
     );
   }
 

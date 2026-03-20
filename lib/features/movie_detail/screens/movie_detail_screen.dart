@@ -19,6 +19,7 @@ import '../../../shared/widgets/rating_badge.dart';
 import '../../../shared/widgets/movie_card.dart';
 import '../widgets/share_rating_sheet.dart';
 import '../widgets/recommend_share_sheet.dart';
+import '../../../shared/widgets/add_to_list_sheet.dart';
 
 class MovieDetailScreen extends ConsumerWidget {
   final int movieId;
@@ -724,8 +725,45 @@ class _DetailViewState extends ConsumerState<_DetailView> {
             activeColor: AppColors.warning,
             onTap: () => _shareRecommendation(context, movie),
           ),
+          const SizedBox(width: 12),
+          _RoundActionBtn(
+            icon: Icons.playlist_add_rounded,
+            label: 'Add to List',
+            active: false,
+            activeColor: AppColors.primary,
+            onTap: () {
+              if (!ref.read(isSignedInProvider)) {
+                _requireSignIn(context);
+                return;
+              }
+              _showAddToListSheet(context, movie);
+            },
+          ),
         ],
       ),
+    );
+  }
+
+  void _showAddToListSheet(BuildContext context, MovieDetail movie) {
+    final movieAsItem = UserListItem(
+      mediaId: movie.id,
+      title: movie.title,
+      posterPath: movie.posterPath,
+      releaseDate: movie.releaseDate,
+      voteAverage: movie.voteAverage,
+      listType: ListType.custom,
+      mediaType: 'movie',
+      addedAt: DateTime.now(),
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0A0A0A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => AddToListSheet(item: movieAsItem),
     );
   }
 

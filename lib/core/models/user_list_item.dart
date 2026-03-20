@@ -1,4 +1,4 @@
-enum ListType { favorites, watched, watchLater, custom }
+enum ListType { watched, watchLater, custom }
 
 class UserListItem {
   final int mediaId;
@@ -39,7 +39,7 @@ class UserListItem {
     final rawType = json['list_type'] as String? ?? 'favorites';
     final listType = ListType.values.firstWhere(
       (e) => e.name == rawType,
-      orElse: () => ListType.favorites,
+      orElse: () => ListType.watched,
     );
     return UserListItem(
       mediaId: json['media_id'] as int,
