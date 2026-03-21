@@ -163,7 +163,7 @@ class _BannerPage extends ConsumerWidget {
           Positioned.fill(
             child: movie.hasBackdrop
                 ? CachedNetworkImage(
-                    imageUrl: AppConstants.backdropUrl(movie.backdropPath!, size: AppConstants.backdropOriginal),
+                    imageUrl: AppConstants.backdropUrl(movie.backdropPath!, size: AppConstants.backdropW1280),
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
@@ -345,41 +345,43 @@ class _CinematicButton extends StatelessWidget {
       ],
     );
 
+    final container = Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: isPrimary
+            ? AppColors.primary
+            : Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: isPrimary
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : null,
+        border: isPrimary
+            ? null
+            : Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 1,
+              ),
+      ),
+      child: content,
+    );
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(14),
-          child: BackdropFilter(
-            filter: isPrimary
-                ? ImageFilter.blur(sigmaX: 0, sigmaY: 0)
-                : ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: isPrimary
-                    ? AppColors.primary
-                    : Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: isPrimary
-                    ? [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        )
-                      ]
-                    : null,
-                border: isPrimary
-                    ? null
-                    : Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-              ),
-              child: content,
-            ),
-          ),
+          child: isPrimary
+              ? container
+              : BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: container,
+                ),
         ),
       ),
     );

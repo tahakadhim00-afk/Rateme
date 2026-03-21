@@ -24,14 +24,13 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     if (!mounted) return;
     _ref.read(listsLoadingProvider.notifier).state = true;
     try {
-      for (final item in [
-        ...state[ListType.watched] ?? [],
-        ...state[ListType.watchLater] ?? [],
-      ]) {
-        try {
-          await supabaseService.addToList(item);
-        } catch (_) {}
-      }
+      await Future.wait([
+        for (final item in [
+          ...(state[ListType.watched] ?? []),
+          ...(state[ListType.watchLater] ?? []),
+        ])
+          supabaseService.addToList(item).catchError((_) {}),
+      ]);
 
       final items = await supabaseService.fetchUserLists();
       final grouped = <ListType, List<UserListItem>>{
@@ -181,3 +180,11 @@ final watchedProvider = Provider<List<UserListItem>>(
 final watchLaterProvider = Provider<List<UserListItem>>(
   (ref) => ref.watch(listsProvider)[ListType.watchLater] ?? [],
 );
+
+final recentlyRatedProvider = Provider<List<UserListItem>>((ref) {
+  final watched = ref.watch(watchedProvider);
+  return watched
+      .where((i) => i.userRating != null)
+      .toList()
+    ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
+});

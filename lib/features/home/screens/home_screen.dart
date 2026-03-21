@@ -1,4 +1,5 @@
 import 'dart:ui' show ImageFilter;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -64,12 +65,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final notifCount = ref.watch(unreadNotifCountProvider);
     final currentUser = ref.watch(currentUserProvider);
     final isSignedIn = ref.watch(isSignedInProvider);
-    final watched = ref.watch(watchedProvider);
-
-    final recentlyRated = isSignedIn
-        ? (watched.where((i) => i.userRating != null).toList()
-          ..sort((a, b) => b.addedAt.compareTo(a.addedAt)))
-        : <UserListItem>[];
+    final recentlyRated =
+        isSignedIn ? ref.watch(recentlyRatedProvider) : <UserListItem>[];
 
     final userName = currentUser?.userMetadata?['full_name'] as String?;
 
@@ -442,12 +439,12 @@ class _RatedCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: item.posterPath != null
-                  ? Image.network(
-                      AppConstants.posterUrl(item.posterPath!),
+                  ? CachedNetworkImage(
+                      imageUrl: AppConstants.posterUrl(item.posterPath!),
                       width: 110,
                       height: 165,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _posterFallback(colors),
+                      errorWidget: (_, _, _) => _posterFallback(colors),
                     )
                   : _posterFallback(colors),
             ),
@@ -756,14 +753,13 @@ class _NotifTile extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: movie.posterPath != null
-                  ? Image.network(
-                      AppConstants.posterUrl(movie.posterPath!,
+                  ? CachedNetworkImage(
+                      imageUrl: AppConstants.posterUrl(movie.posterPath!,
                           size: AppConstants.posterW342),
                       width: 38,
                       height: 56,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          _posterFallback(colors),
+                      errorWidget: (_, _, _) => _posterFallback(colors),
                     )
                   : _posterFallback(colors),
             ),

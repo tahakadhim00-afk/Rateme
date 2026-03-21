@@ -93,7 +93,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sign in failed: $e'),
+            content: const Text('Sign in failed. Please try again.'),
             backgroundColor: AppColors.error,
           ),
         );

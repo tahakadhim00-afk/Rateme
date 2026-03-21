@@ -12,16 +12,36 @@ import '../../features/home/screens/see_all_screen.dart';
 import '../../core/services/supabase_service.dart';
 import 'main_scaffold.dart';
 
+// Routes that are only accessible when signed in.
+const _protectedRoutes = {'/home', '/search', '/lists', '/profile'};
+
+bool _requiresAuth(String path) {
+  if (_protectedRoutes.contains(path)) return true;
+  // Deep-linked detail routes
+  if (path.startsWith('/movie/') ||
+      path.startsWith('/tv/') ||
+      path.startsWith('/actor/') ||
+      path.startsWith('/see-all')) {
+    return true;
+  }
+  return false;
+}
+
 final appRouter = GoRouter(
   initialLocation: supabaseService.isSignedIn ? '/home' : '/signin',
   redirect: (context, state) {
+    final path = state.uri.path;
     // OAuth deep-link callback arrives as '/'
-    if (state.uri.path == '/') {
+    if (path == '/') {
       return supabaseService.isSignedIn ? '/home' : '/signin';
     }
     // Already signed in — skip the sign-in screen
-    if (state.uri.path == '/signin' && supabaseService.isSignedIn) {
+    if (path == '/signin' && supabaseService.isSignedIn) {
       return '/home';
+    }
+    // Not signed in trying to reach a protected route
+    if (!supabaseService.isSignedIn && _requiresAuth(path)) {
+      return '/signin';
     }
     return null;
   },
