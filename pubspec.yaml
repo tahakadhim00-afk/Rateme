@@ -24,10 +24,6 @@ dependencies:
   # Images
   cached_network_image: ^3.4.1
   palette_generator: ^0.3.3
-  flutter_svg: ^2.0.10+1
-
-  # Fonts
-  google_fonts: ^6.2.1
 
   # Rating
   flutter_rating_bar: ^4.0.1
@@ -49,9 +45,6 @@ dependencies:
   # Local notifications
   flutter_local_notifications: ^18.0.1
 
-  # YouTube player (trailer cover)
-  youtube_player_iframe: ^5.2.2
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -69,7 +62,6 @@ flutter:
     - assets/logo_and_images/
     - assets/app_icons/
     - assets/placeholders/
-    - assets/awards/
 
   fonts:
     - family: Poppins
