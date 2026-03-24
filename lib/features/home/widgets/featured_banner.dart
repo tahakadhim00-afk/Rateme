@@ -159,17 +159,35 @@ class _BannerPage extends ConsumerWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Backdrop
+          // Backdrop image, falls back to poster if no backdrop is available.
           Positioned.fill(
             child: movie.hasBackdrop
                 ? CachedNetworkImage(
-                    imageUrl: AppConstants.backdropUrl(movie.backdropPath!, size: AppConstants.backdropW1280),
+                    imageUrl: AppConstants.backdropUrl(movie.backdropPath!),
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
-                    errorWidget: (_, e, s) => Container(color: bg),
+                    errorWidget: (_, e, s) => movie.hasPoster
+                        ? CachedNetworkImage(
+                            imageUrl: AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterW500),
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            width: double.infinity,
+                            height: double.infinity,
+                            errorWidget: (_, e, s) => Container(color: bg),
+                          )
+                        : Container(color: bg),
                   )
-                : Container(color: bg),
+                : (movie.hasPoster
+                    ? CachedNetworkImage(
+                        imageUrl: AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterW500),
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorWidget: (_, e, s) => Container(color: bg),
+                      )
+                    : Container(color: bg)),
           ),
 
           // Cinematic Overlay Gradients
@@ -279,7 +297,13 @@ class _BannerPage extends ConsumerWidget {
                 // Metadata Row
                 Row(
                   children: [
-                    RatingBadge(rating: movie.voteAverage, fontSize: 13, iconSize: 15),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: RatingBadge(rating: movie.voteAverage, fontSize: 13, iconSize: 15),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),

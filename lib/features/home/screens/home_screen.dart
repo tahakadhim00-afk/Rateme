@@ -251,6 +251,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onTap: (item) => item.mediaType == 'tv'
                 ? context.push('/tv/${item.mediaId}')
                 : context.push('/movie/${item.mediaId}'),
+            onSeeAll: () => context.push('/lists'),
           ),
         ),
       ],
@@ -373,8 +374,9 @@ class _SectionError extends StatelessWidget {
 class _RecentlyRatedRow extends StatelessWidget {
   final List<UserListItem> items;
   final void Function(UserListItem) onTap;
+  final VoidCallback? onSeeAll;
 
-  const _RecentlyRatedRow({required this.items, required this.onTap});
+  const _RecentlyRatedRow({required this.items, required this.onTap, this.onSeeAll});
 
   @override
   Widget build(BuildContext context) {
@@ -386,13 +388,30 @@ class _RecentlyRatedRow extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Text(
-            'Your Ratings',
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Your Ratings',
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (onSeeAll != null)
+                GestureDetector(
+                  onTap: onSeeAll,
+                  child: Text(
+                    'See All',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 14),
