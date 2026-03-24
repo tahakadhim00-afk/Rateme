@@ -15,6 +15,10 @@ class RatingShareCard extends StatelessWidget {
   /// Display name of the user sharing the card.
   final String? username;
 
+  /// Controls which part of the backdrop is shown (e.g. pan left/right).
+  /// Defaults to [Alignment.center].
+  final Alignment backdropAlignment;
+
   const RatingShareCard({
     super.key,
     required this.title,
@@ -22,6 +26,7 @@ class RatingShareCard extends StatelessWidget {
     required this.posterUrl,
     required this.rating,
     this.username,
+    this.backdropAlignment = Alignment.center,
   });
 
   @override
@@ -42,7 +47,11 @@ class RatingShareCard extends StatelessWidget {
           children: [
             // ── Background poster ──────────────────────────────────────────
             if (posterUrl != null)
-              CachedNetworkImage(imageUrl: posterUrl!, fit: BoxFit.cover)
+              CachedNetworkImage(
+                imageUrl: posterUrl!,
+                fit: BoxFit.cover,
+                alignment: backdropAlignment,
+              )
             else
               const ColoredBox(color: Color(0xFF111118)),
 
@@ -147,7 +156,7 @@ class RatingShareCard extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 26,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w400,
                       letterSpacing: -0.5,
                     ),
                   ),

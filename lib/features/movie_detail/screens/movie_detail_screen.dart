@@ -872,6 +872,8 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         posterUrl: posterUrl,
         rating: _userRating,
         username: username,
+        mediaId: movie.id,
+        mediaType: 'movie',
       ),
     );
   }
@@ -1089,11 +1091,12 @@ class _MovieDetailSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: Shimmer.fromColors(
-        baseColor: AppColors.surfaceVariant,
-        highlightColor: AppColors.border,
+        baseColor: colors.surfaceVariant,
+        highlightColor: colors.border,
         child: SingleChildScrollView(
           physics: const NeverScrollableScrollPhysics(),
           child: Column(
@@ -1108,28 +1111,25 @@ class _MovieDetailSkeleton extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(width: 110, height: 163, color: Colors.white),
-                    ),
+                    _SBox(w: 110, h: 163, r: 14),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(height: 20, color: Colors.white),
-                          const SizedBox(height: 8),
-                          Container(height: 20, width: 140, color: Colors.white),
+                          _SBox(h: 22),
+                          const SizedBox(height: 6),
+                          _SBox(h: 22, w: 160),
                           const SizedBox(height: 14),
                           Row(children: [
-                            _SBox(w: 76, h: 28, r: 8),
+                            _SBox(w: 76, h: 26, r: 8),
                             const SizedBox(width: 8),
-                            _SBox(w: 68, h: 28, r: 8),
+                            _SBox(w: 68, h: 26, r: 8),
                           ]),
                           const SizedBox(height: 10),
-                          _SBox(w: 72, h: 22, r: 6),
-                          const SizedBox(height: 6),
-                          _SBox(w: 80, h: 13, r: 4),
+                          _SBox(w: 100, h: 20, r: 6),
+                          const SizedBox(height: 8),
+                          _SBox(w: 70, h: 13, r: 4),
                         ],
                       ),
                     ),
@@ -1138,13 +1138,17 @@ class _MovieDetailSkeleton extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Action buttons
+              // 4 action buttons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(children: [
-                  Expanded(child: _SBox(h: 56, r: 14)),
+                  Expanded(child: _SBox(h: 58, r: 14)),
                   const SizedBox(width: 12),
-                  Expanded(child: _SBox(h: 56, r: 14)),
+                  Expanded(child: _SBox(h: 58, r: 14)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _SBox(h: 58, r: 14)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _SBox(h: 58, r: 14)),
                 ]),
               ),
               const SizedBox(height: 28),
@@ -1152,25 +1156,28 @@ class _MovieDetailSkeleton extends StatelessWidget {
               // Overview
               _SkeletonSection(
                 titleWidth: 80,
-                lines: const [null, null, 180],
+                lines: const [null, null, 200],
               ),
               const SizedBox(height: 28),
 
-              // Rating
+              // Rate this movie
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SBox(w: 130, h: 16, r: 4),
+                    _SBox(w: 140, h: 16, r: 4),
                     const SizedBox(height: 14),
-                    _SBox(w: 176, h: 36, r: 8),
+                    Row(children: List.generate(5, (i) => Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: _SBox(w: 36, h: 36, r: 18),
+                    ))),
                   ],
                 ),
               ),
               const SizedBox(height: 28),
 
-              // Genres chips
+              // Genres
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
@@ -1193,7 +1200,7 @@ class _MovieDetailSkeleton extends StatelessWidget {
               // Cast
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _SBox(w: 60, h: 16, r: 4),
+                child: _SBox(w: 50, h: 16, r: 4),
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -1210,6 +1217,48 @@ class _MovieDetailSkeleton extends StatelessWidget {
                       const SizedBox(height: 6),
                       _SBox(w: 66, h: 10, r: 4),
                     ]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Trailers
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _SBox(w: 70, h: 16, r: 4),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 180,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 3,
+                  itemBuilder: (_, i) => Padding(
+                    padding: EdgeInsets.only(right: i < 2 ? 14 : 0),
+                    child: _SBox(w: 280, h: 180, r: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // More Like This
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _SBox(w: 120, h: 16, r: 4),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 195,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 4,
+                  itemBuilder: (_, i) => Padding(
+                    padding: EdgeInsets.only(right: i < 3 ? 14 : 0),
+                    child: _SBox(w: 120, h: 195, r: 12),
                   ),
                 ),
               ),
