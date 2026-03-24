@@ -73,7 +73,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     setState(() => _showRecents = false);
     _debounce = Timer(const Duration(milliseconds: 400), () {
       ref.read(searchQueryProvider.notifier).state = v;
-      _saveRecent(v.trim());
     });
   }
 
@@ -87,7 +86,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Future<void> _loadRecents() async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList('search_recent_v1') ?? [];
-    if (mounted) setState(() => _recentSearches = list);
+    if (!mounted) return;
+    setState(() {
+      _recentSearches = list;
+      // Field may already be focused by the time recents finish loading
+      final query = ref.read(searchQueryProvider);
+      _showRecents =
+          _focusNode.hasFocus && query.trim().isEmpty && list.isNotEmpty;
+    });
   }
 
   Future<void> _saveRecent(String q) async {
@@ -128,31 +134,57 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                style: TextStyle(color: colors.textPrimary),
-                onChanged: _onSearchChanged,
-                decoration: InputDecoration(
-                  hintText: 'Search movies, actors, directors',
-                  prefixIcon:
-                      Icon(Icons.search_rounded, color: colors.textMuted),
-                  suffixIcon: _controller.text.isNotEmpty
-                      ? GestureDetector(
-                          onTap: () {
-                            _controller.clear();
-                            _debounce?.cancel();
-                            ref.read(searchQueryProvider.notifier).state = '';
-                            setState(() {
-                              _showRecents = _focusNode.hasFocus &&
-                                  _recentSearches.isNotEmpty;
-                            });
-                          },
-                          child: Icon(Icons.close_rounded,
-                              color: colors.textMuted),
-                        )
-                      : null,
-                ),
+              child: Row(
+                children: [
+                  if (isSearching) ...[
+                    GestureDetector(
+                      onTap: () {
+                        _controller.clear();
+                        _debounce?.cancel();
+                        ref.read(searchQueryProvider.notifier).state = '';
+                        _focusNode.unfocus();
+                        setState(() => _showRecents = false);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Icon(Icons.arrow_back_ios_rounded,
+                            color: colors.textPrimary, size: 20),
+                      ),
+                    ),
+                  ],
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      style: TextStyle(color: colors.textPrimary),
+                      onChanged: _onSearchChanged,
+                      onSubmitted: (v) {
+                        final q = v.trim();
+                        if (q.isNotEmpty) _saveRecent(q);
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search movies, actors, directors',
+                        prefixIcon:
+                            Icon(Icons.search_rounded, color: colors.textMuted),
+                        suffixIcon: _controller.text.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () {
+                                  _controller.clear();
+                                  _debounce?.cancel();
+                                  ref.read(searchQueryProvider.notifier).state = '';
+                                  setState(() {
+                                    _showRecents = _focusNode.hasFocus &&
+                                        _recentSearches.isNotEmpty;
+                                  });
+                                },
+                                child: Icon(Icons.close_rounded,
+                                    color: colors.textMuted),
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -1348,8 +1380,8 @@ class _RecentSearches extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppThemeColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return ListView(
+      padding: EdgeInsets.zero,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 8, 12),
