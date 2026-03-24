@@ -379,7 +379,7 @@ class _EpisodeTileState extends ConsumerState<_EpisodeTile> {
         user?.email?.split('@').first;
     final episode = widget.episode;
     final posterUrl = episode.hasStill
-        ? AppConstants.posterUrl(episode.stillPath!, size: '/w500')
+        ? AppConstants.posterUrl(episode.stillPath!, size: AppConstants.posterOriginal)
         : null;
     final episodeTitle =
         'S${episode.episodeNumber.toString().padLeft(2, '0')} · ${episode.name}';
