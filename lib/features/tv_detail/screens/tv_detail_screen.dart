@@ -699,6 +699,8 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
         posterUrl: posterUrl,
         rating: _userRating,
         username: username,
+        mediaId: tv.id,
+        mediaType: 'tv',
       ),
     );
   }
@@ -921,18 +923,21 @@ class _TvDetailSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppThemeColors.of(context);
     return Scaffold(
-      backgroundColor: AppThemeColors.of(context).background,
+      backgroundColor: colors.background,
       body: Shimmer.fromColors(
-        baseColor: AppThemeColors.of(context).surfaceVariant,
-        highlightColor: AppThemeColors.of(context).border,
+        baseColor: colors.surfaceVariant,
+        highlightColor: colors.border,
         child: SingleChildScrollView(
           physics: const NeverScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Hero image
               Container(height: 300, color: Colors.white),
 
+              // Main info row
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: Row(
@@ -945,20 +950,20 @@ class _TvDetailSkeleton extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _SBox(h: 22),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           _SBox(h: 22, w: 160),
                           const SizedBox(height: 14),
                           Row(children: [
-                            _SBox(w: 76, h: 28, r: 8),
+                            _SBox(w: 70, h: 26, r: 8),
                             const SizedBox(width: 8),
-                            _SBox(w: 68, h: 28, r: 8),
+                            _SBox(w: 62, h: 26, r: 8),
                             const SizedBox(width: 8),
-                            _SBox(w: 72, h: 28, r: 8),
+                            _SBox(w: 66, h: 26, r: 8),
                           ]),
                           const SizedBox(height: 10),
-                          _SBox(w: 72, h: 22, r: 6),
-                          const SizedBox(height: 6),
-                          _SBox(w: 80, h: 13, r: 4),
+                          _SBox(w: 100, h: 20, r: 6),
+                          const SizedBox(height: 8),
+                          _SBox(w: 70, h: 13, r: 4),
                         ],
                       ),
                     ),
@@ -967,16 +972,22 @@ class _TvDetailSkeleton extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
+              // 4 action buttons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(children: [
-                  Expanded(child: _SBox(h: 56, r: 14)),
+                  Expanded(child: _SBox(h: 58, r: 14)),
                   const SizedBox(width: 12),
-                  Expanded(child: _SBox(h: 56, r: 14)),
+                  Expanded(child: _SBox(h: 58, r: 14)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _SBox(h: 58, r: 14)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _SBox(h: 58, r: 14)),
                 ]),
               ),
               const SizedBox(height: 28),
 
+              // Overview
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
@@ -984,16 +995,34 @@ class _TvDetailSkeleton extends StatelessWidget {
                   children: [
                     _SBox(w: 80, h: 16, r: 4),
                     const SizedBox(height: 12),
-                    _SBox(h: 14),
+                    _SBox(h: 13),
                     const SizedBox(height: 6),
-                    _SBox(h: 14),
+                    _SBox(h: 13),
                     const SizedBox(height: 6),
-                    _SBox(h: 14, w: 200),
+                    _SBox(h: 13, w: 220),
                   ],
                 ),
               ),
               const SizedBox(height: 28),
 
+              // Rate this show
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SBox(w: 130, h: 16, r: 4),
+                    const SizedBox(height: 14),
+                    Row(children: List.generate(5, (i) => Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: _SBox(w: 36, h: 36, r: 18),
+                    ))),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Genres
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
@@ -1013,9 +1042,10 @@ class _TvDetailSkeleton extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
+              // Seasons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _SBox(w: 100, h: 16, r: 4),
+                child: _SBox(w: 70, h: 16, r: 4),
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -1033,9 +1063,10 @@ class _TvDetailSkeleton extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
+              // Cast
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _SBox(w: 60, h: 16, r: 4),
+                child: _SBox(w: 50, h: 16, r: 4),
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -1052,6 +1083,27 @@ class _TvDetailSkeleton extends StatelessWidget {
                       const SizedBox(height: 6),
                       _SBox(w: 66, h: 10, r: 4),
                     ]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // More Like This
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _SBox(w: 120, h: 16, r: 4),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 195,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 4,
+                  itemBuilder: (_, i) => Padding(
+                    padding: EdgeInsets.only(right: i < 3 ? 14 : 0),
+                    child: _SBox(w: 120, h: 195, r: 12),
                   ),
                 ),
               ),
