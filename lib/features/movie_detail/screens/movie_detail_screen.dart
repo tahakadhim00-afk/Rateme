@@ -857,10 +857,10 @@ class _DetailViewState extends ConsumerState<_DetailView> {
     final user = ref.read(currentUserProvider);
     final username = (user?.userMetadata?['full_name'] as String?) ??
         user?.email?.split('@').first;
-    final posterUrl = movie.hasPoster
-        ? AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterW500)
-        : movie.hasBackdrop
-            ? AppConstants.backdropUrl(movie.backdropPath!)
+    final posterUrl = movie.hasBackdrop
+        ? AppConstants.backdropUrl(movie.backdropPath!, size: AppConstants.backdropW1280)
+        : movie.hasPoster
+            ? AppConstants.posterUrl(movie.posterPath!, size: AppConstants.posterOriginal)
             : null;
     showModalBottomSheet(
       context: context,
@@ -1066,7 +1066,7 @@ class _RoundActionBtn extends StatelessWidget {
                     Text(
                       label,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 9,
                         fontWeight: FontWeight.w500,
                         color: active ? activeColor : colors.textMuted,
                       ),

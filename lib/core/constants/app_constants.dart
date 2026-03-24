@@ -8,6 +8,7 @@ class AppConstants {
 
   static const String posterW342 = '/w342';
   static const String posterW500 = '/w500';
+  static const String posterOriginal = '/original';
   static const String backdropW780 = '/w780';
   static const String backdropW1280 = '/w1280';
   static const String backdropOriginal = '/original';

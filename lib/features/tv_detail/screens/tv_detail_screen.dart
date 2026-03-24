@@ -684,10 +684,10 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
     final user = ref.read(currentUserProvider);
     final username = (user?.userMetadata?['full_name'] as String?) ??
         user?.email?.split('@').first;
-    final posterUrl = tv.posterPath != null
-        ? AppConstants.posterUrl(tv.posterPath!, size: AppConstants.posterW500)
-        : tv.backdropPath != null
-            ? AppConstants.backdropUrl(tv.backdropPath!)
+    final posterUrl = tv.backdropPath != null
+        ? AppConstants.backdropUrl(tv.backdropPath!, size: AppConstants.backdropW1280)
+        : tv.posterPath != null
+            ? AppConstants.posterUrl(tv.posterPath!, size: AppConstants.posterOriginal)
             : null;
     showModalBottomSheet(
       context: context,
@@ -1133,7 +1133,7 @@ class _RoundActionBtn extends StatelessWidget {
                     Text(
                       label,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 9,
                         fontWeight: FontWeight.w500,
                         color: active ? activeColor : colors.textMuted,
                       ),
