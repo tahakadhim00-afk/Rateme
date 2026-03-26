@@ -32,13 +32,14 @@ class TmdbService {
 
   bool _isSafe(Movie m) {
     if (!m.isVisible) return false;
-    // Require a minimum number of votes — AV films on TMDB almost always
-    // have 0-2 votes since real audiences don't rate them there.
-    if (m.voteCount < 5) return false;
+    // Require a meaningful vote count — AV/spam entries on TMDB rarely get many votes.
+    if (m.voteCount < 10) return false;
+    // 0.0 means unrated/no real votes; 10.0 is vote-gamed spam.
+    if (m.voteAverage <= 0.0 || m.voteAverage >= 10.0) return false;
     // Block if the title matches known AV keywords
     if (_avPattern.hasMatch(m.title)) return false;
     if (m.originalTitle != null && _avPattern.hasMatch(m.originalTitle!)) return false;
-    // Block by genre if needed
+    // Block by genre
     if (m.genreIds.any(_blockedGenres.contains)) return false;
     return true;
   }
@@ -126,6 +127,9 @@ class TmdbService {
       'with_genres': genreId,
       'page': page,
       'sort_by': 'popularity.desc',
+      'vote_count.gte': 10,
+      // Exclude Romance-tagged content on non-Romance pages to block AV entries
+      if (genreId != 10749) 'without_genres': '10749',
     });
     final totalPages = (resp.data['total_pages'] as num?)?.toInt() ?? 1;
     final results = resp.data['results'] as List<dynamic>;
@@ -145,6 +149,8 @@ class TmdbService {
       'with_genres': genreId,
       'page': page,
       'sort_by': 'popularity.desc',
+      'vote_count.gte': 10,
+      if (genreId != 10749) 'without_genres': '10749',
     });
     final totalPages = (resp.data['total_pages'] as num?)?.toInt() ?? 1;
     final results = resp.data['results'] as List<dynamic>;

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_list_item.dart';
 import '../models/movie.dart';
@@ -41,7 +42,8 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
         grouped[item.listType]?.add(item);
       }
       state = grouped;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('ListsNotifier.loadFromSupabase error: $e\n$st');
     } finally {
       if (mounted) _ref.read(listsLoadingProvider.notifier).state = false;
     }
@@ -82,7 +84,9 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     if (supabaseService.isSignedIn) {
       try {
         await supabaseService.addToList(item);
-      } catch (_) {}
+      } catch (e, st) {
+        debugPrint('ListsNotifier.addToList error: $e\n$st');
+      }
     }
   }
 
@@ -94,7 +98,9 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     if (supabaseService.isSignedIn) {
       try {
         await supabaseService.removeFromList(type, mediaId);
-      } catch (_) {}
+      } catch (e, st) {
+        debugPrint('ListsNotifier.removeFromList error: $e\n$st');
+      }
     }
   }
 

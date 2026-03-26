@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Config — enforces HTTPS and prevents MITM attacks.
+
+  Release behaviour:
+    - Cleartext (HTTP) traffic is blocked entirely.
+    - Only system CAs are trusted; user-installed CAs (e.g. Burp Suite proxy
+      cert, corporate proxy) are NOT trusted, so a MITM attack that relies on
+      installing a custom root CA will fail.
+
+  Debug behaviour:
+    - User-installed CAs ARE trusted so that developers can inspect traffic
+      with a proxy tool like Charles or mitmproxy during development.
+-->
+<network-security-config>
+
+    <!-- Block all cleartext (HTTP) traffic app-wide -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Only trust CAs that shipped with the OS -->
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+
+    <!-- Debug builds: also trust user-installed CAs for traffic inspection -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </debug-overrides>
+
+</network-security-config>

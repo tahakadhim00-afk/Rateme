@@ -74,38 +74,47 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/movie/:id',
       builder: (ctx, state) {
-        final id = int.parse(state.pathParameters['id']!);
+        final id = int.tryParse(state.pathParameters['id'] ?? '');
+        if (id == null) return const HomeScreen();
         return MovieDetailScreen(movieId: id);
       },
     ),
     GoRoute(
       path: '/tv/:id',
       builder: (ctx, state) {
-        final id = int.parse(state.pathParameters['id']!);
+        final id = int.tryParse(state.pathParameters['id'] ?? '');
+        if (id == null) return const HomeScreen();
         return TvDetailScreen(tvId: id);
       },
     ),
     GoRoute(
       path: '/tv/:id/season/:season',
       builder: (ctx, state) {
-        final id = int.parse(state.pathParameters['id']!);
-        final season = int.parse(state.pathParameters['season']!);
+        final id = int.tryParse(state.pathParameters['id'] ?? '');
+        final season = int.tryParse(state.pathParameters['season'] ?? '');
+        if (id == null || season == null) return const HomeScreen();
         return TvSeasonScreen(tvId: id, seasonNumber: season);
       },
     ),
     GoRoute(
       path: '/actor/:id',
       builder: (ctx, state) {
-        final id = int.parse(state.pathParameters['id']!);
+        final id = int.tryParse(state.pathParameters['id'] ?? '');
+        if (id == null) return const HomeScreen();
         return ActorProfileScreen(actorId: id);
       },
     ),
     GoRoute(
       path: '/see-all',
       builder: (ctx, state) {
-        final category = state.uri.queryParameters['category']!;
-        final title = state.uri.queryParameters['title']!;
-        final mediaType = state.uri.queryParameters['mediaType'] ?? 'movie';
+        final category = state.uri.queryParameters['category'] ?? '';
+        final title = state.uri.queryParameters['title'] ?? '';
+        const validMediaTypes = {'movie', 'tv'};
+        final mediaTypeParam = state.uri.queryParameters['mediaType'] ?? 'movie';
+        final mediaType = validMediaTypes.contains(mediaTypeParam) ? mediaTypeParam : 'movie';
+        if (category.isEmpty || category.length > 100 || title.length > 200) {
+          return const HomeScreen();
+        }
         return SeeAllScreen(category: category, title: title, mediaType: mediaType);
       },
     ),

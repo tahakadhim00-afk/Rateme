@@ -1,6 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/custom_list.dart';
 import '../models/user_list_item.dart';
 import '../services/supabase_service.dart';
@@ -9,6 +10,11 @@ import 'auth_provider.dart';
 String _prefsKey(String? userId) => 'custom_lists_v1_${userId ?? 'guest'}';
 
 class CustomListsNotifier extends StateNotifier<List<CustomList>> {
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+
   final String _key;
   final String? _userId;
 
@@ -28,22 +34,24 @@ class CustomListsNotifier extends StateNotifier<List<CustomList>> {
 
   Future<void> _loadLocal() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_key);
+      final raw = await _storage.read(key: _key);
       if (raw == null) return;
       final list = (jsonDecode(raw) as List<dynamic>)
           .map((e) => CustomList.fromJson(e as Map<String, dynamic>))
           .toList();
       if (mounted) state = list;
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('CustomListsNotifier._loadLocal error: $e\n$st');
+    }
   }
 
   Future<void> _saveLocal() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-          _key, jsonEncode(state.map((e) => e.toJson()).toList()));
-    } catch (_) {}
+      await _storage.write(
+          key: _key, value: jsonEncode(state.map((e) => e.toJson()).toList()));
+    } catch (e, st) {
+      debugPrint('CustomListsNotifier._saveLocal error: $e\n$st');
+    }
   }
 
   Future<void> _syncFromCloud() async {
@@ -56,7 +64,9 @@ class CustomListsNotifier extends StateNotifier<List<CustomList>> {
       } else if (state.isNotEmpty) {
         await supabaseService.saveCustomLists(state);
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('CustomListsNotifier._syncFromCloud error: $e\n$st');
+    }
   }
 
   Future<void> _save() async {
