@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
 
   static const _channelId = 'rateme_main';
   static const _channelName = 'RateMe';
@@ -51,33 +55,48 @@ class NotificationService {
   // ── Reminder preference ───────────────────────────────────────────────────
 
   static Future<bool> isReminderEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_reminderKey) ?? false;
+    final val = await _storage.read(key: _reminderKey);
+    return val == 'true';
   }
 
   static Future<TimeOfDay?> getReminderTime() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hour = prefs.getInt(_reminderHourKey);
-    final minute = prefs.getInt(_reminderMinuteKey);
+    final hour = await _storage.read(key: _reminderHourKey);
+    final minute = await _storage.read(key: _reminderMinuteKey);
     if (hour == null || minute == null) return null;
-    return TimeOfDay(hour: hour, minute: minute);
+    final h = int.tryParse(hour);
+    final m = int.tryParse(minute);
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
   }
 
   static Future<void> setReminderTime(TimeOfDay time) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_reminderHourKey, time.hour);
-    await prefs.setInt(_reminderMinuteKey, time.minute);
+    await _storage.write(key: _reminderHourKey, value: time.hour.toString());
+    await _storage.write(key: _reminderMinuteKey, value: time.minute.toString());
   }
 
   static Future<void> setReminderEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_reminderKey, enabled);
+    await _storage.write(key: _reminderKey, value: enabled.toString());
 
     if (enabled) {
-      await show(
-        id: 1,
-        title: '🎬 Daily Reminder Set!',
-        body: 'We\'ll remind you to check your watchlist every day.',
+      const details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          _channelName,
+          channelDescription: _channelDesc,
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+      await _plugin.periodicallyShow(
+        1,
+        '🎬 RateMe Daily Reminder',
+        'Your watchlist is waiting — anything new to rate today?',
+        RepeatInterval.daily,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
     } else {
       await _plugin.cancel(1);

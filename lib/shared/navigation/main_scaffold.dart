@@ -77,7 +77,7 @@ class _BottomNav extends ConsumerWidget {
       ),
       child: NavigationBar(
         backgroundColor: Colors.black,
-        indicatorColor: AppColors.primary.withValues(alpha: 0.15),
+        indicatorColor: Colors.transparent,
         selectedIndex: currentIndex,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         animationDuration: const Duration(milliseconds: 300),
@@ -105,8 +105,8 @@ class _BottomNav extends ConsumerWidget {
             label: 'Search',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.collections_bookmark_outlined),
-            selectedIcon: Icon(Icons.collections_bookmark_rounded, color: AppColors.primary),
+            icon: Icon(Icons.bookmark_border_rounded),
+            selectedIcon: Icon(Icons.bookmark_rounded, color: AppColors.primary),
             label: 'Lists',
           ),
           NavigationDestination(

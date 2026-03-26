@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:palette_generator/palette_generator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_provider.dart';
 
 class CoverNotifier extends StateNotifier<String?> {
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+
   final String? _userId;
 
   CoverNotifier(this._userId) : super(null) {
@@ -15,14 +20,12 @@ class CoverNotifier extends StateNotifier<String?> {
       _userId != null ? 'profile_cover_url_$_userId' : 'profile_cover_url_guest';
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getString(_key);
+    state = await _storage.read(key: _key);
   }
 
   Future<void> setCover(String url) async {
     state = url;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, url);
+    await _storage.write(key: _key, value: url);
   }
 }
 

@@ -49,6 +49,8 @@ app.*.map.json
 
 # Secrets — never commit real credentials
 lib/core/config/secrets.dart
+dart_defines/secrets.json
+android/key.properties
 
 # Obfuscation debug symbols — needed for crash de-obfuscation, never ship
 build/debug-info/

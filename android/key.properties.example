@@ -1,0 +1,11 @@
+# Copy this file to key.properties and fill in your real values.
+# key.properties is gitignored — NEVER commit it.
+#
+# Generate a keystore with:
+#   keytool -genkey -v -keystore rateme-release.jks \
+#     -alias rateme -keyalg RSA -keysize 2048 -validity 10000
+#
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=rateme
+storeFile=../rateme-release.jks

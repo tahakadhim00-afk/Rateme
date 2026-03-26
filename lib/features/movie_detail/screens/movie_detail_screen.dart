@@ -395,15 +395,12 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                                           right: i < videos.length - 1 ? 14 : 0),
                                       child: GestureDetector(
                                         onTap: () async {
+                                          // Validate YouTube video ID format to prevent URL injection
+                                          if (!RegExp(r'^[a-zA-Z0-9_-]{1,20}$').hasMatch(key)) return;
                                           final uri = Uri.parse(
                                               'https://www.youtube.com/watch?v=$key');
-                                          try {
-                                            await launchUrl(uri,
-                                                mode: LaunchMode.externalApplication);
-                                          } catch (_) {
-                                            await launchUrl(uri,
-                                                mode: LaunchMode.inAppWebView);
-                                          }
+                                          await launchUrl(uri,
+                                              mode: LaunchMode.externalApplication);
                                         },
                                         child: SizedBox(
                                           width: 280,
