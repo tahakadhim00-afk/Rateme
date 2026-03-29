@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_list_item.dart';
 import '../models/custom_list.dart';
+import '../models/user_preference.dart';
 
 class SupabaseService {
   static SupabaseClient get client => Supabase.instance.client;
@@ -130,6 +131,43 @@ class SupabaseService {
       'data': lists.map((e) => e.toJson()).toList(),
       'updated_at': DateTime.now().toIso8601String(),
     }, onConflict: 'user_id');
+  }
+
+  Future<List<UserPreference>> fetchUserPreferences() async {
+    final user = currentUser;
+    if (user == null) return [];
+    final data = await client
+        .from('user_preferences')
+        .select()
+        .eq('user_id', user.id)
+        .order('added_at', ascending: false);
+    return (data as List)
+        .map((row) => UserPreference.fromJson(row))
+        .toList();
+  }
+
+  Future<void> addPreference(UserPreference pref) async {
+    final user = currentUser;
+    if (user == null) return;
+    await client.from('user_preferences').upsert({
+      'user_id': user.id,
+      'person_id': pref.personId,
+      'person_name': pref.personName,
+      'person_type': pref.personType,
+      'profile_path': pref.profilePath,
+      'added_at': pref.addedAt.toIso8601String(),
+    }, onConflict: 'user_id,person_id,person_type');
+  }
+
+  Future<void> removePreference(int personId, String personType) async {
+    final user = currentUser;
+    if (user == null) return;
+    await client
+        .from('user_preferences')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('person_id', personId)
+        .eq('person_type', personType);
   }
 }
 
