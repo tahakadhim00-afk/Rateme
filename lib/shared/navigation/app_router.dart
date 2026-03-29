@@ -13,17 +13,11 @@ import '../../core/services/supabase_service.dart';
 import 'main_scaffold.dart';
 
 // Routes that are only accessible when signed in.
-const _protectedRoutes = {'/home', '/search', '/lists', '/profile'};
+const _protectedRoutes = {'/search', '/lists', '/profile'};
 
 bool _requiresAuth(String path) {
   if (_protectedRoutes.contains(path)) return true;
-  // Deep-linked detail routes
-  if (path.startsWith('/movie/') ||
-      path.startsWith('/tv/') ||
-      path.startsWith('/actor/') ||
-      path.startsWith('/see-all')) {
-    return true;
-  }
+  // Deep-linked detail routes (guests can browse)
   return false;
 }
 

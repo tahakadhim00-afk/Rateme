@@ -15,6 +15,7 @@ import '../../../core/models/user_list_item.dart';
 import '../../../core/models/genre.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/google_sign_in_button.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -1037,8 +1038,8 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
               labelColor: AppColors.error,
               onTap: () async {
                 Navigator.pop(context);
-                await ref.read(authNotifierProvider.notifier).signOut();
                 ref.read(listsProvider.notifier).clearAll();
+                await ref.read(authNotifierProvider.notifier).signOut();
                 if (context.mounted) context.go('/signin');
               },
             ),
@@ -1153,7 +1154,10 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
     if (user == null) return;
     try {
       ref.read(listsProvider.notifier).clearAll();
-      await ref.read(authNotifierProvider.notifier).deleteAccount();
+      // Call the service directly to avoid auth notifier state changes
+      // triggering a Riverpod rebuild on an already-unmounting widget.
+      // The GoRouter redirect handles navigation once the auth state updates.
+      await supabaseService.deleteAccount();
       if (mounted) context.go('/signin');
     } catch (e) {
       if (mounted) {
@@ -1656,10 +1660,11 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
     setState(() => _loading = true);
     try {
       final results = await ref.read(tmdbServiceProvider).searchMulti(query.trim());
+      if (!mounted) return;
       setState(() => _results = results);
     } catch (_) {
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -1673,10 +1678,11 @@ class _CoverPickerSheetState extends ConsumerState<_CoverPickerSheet> {
     try {
       final paths =
           await ref.read(tmdbServiceProvider).getBackdrops(movie.id, movie.mediaType);
+      if (!mounted) return;
       setState(() => _backdrops = paths);
     } catch (_) {
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

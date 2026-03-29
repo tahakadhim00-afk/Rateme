@@ -7,6 +7,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/actor_detail.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/preferences_provider.dart';
 import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/movie_card.dart';
@@ -39,13 +41,13 @@ class ActorProfileScreen extends ConsumerWidget {
   }
 }
 
-class _ActorView extends StatelessWidget {
+class _ActorView extends ConsumerWidget {
   final ActorDetail actor;
 
   const _ActorView({required this.actor});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final bgImageUrl = actor.hasProfile
         ? AppConstants.posterUrl(actor.profilePath!, size: AppConstants.posterW500)
         : null;
@@ -72,7 +74,7 @@ class _ActorView extends StatelessWidget {
           ],
           CustomScrollView(
         slivers: [
-          _buildAppBar(context),
+          _buildAppBar(context, ref),
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +135,13 @@ class _ActorView extends StatelessWidget {
     );
   }
 
-  SliverAppBar _buildAppBar(BuildContext context) {
+  SliverAppBar _buildAppBar(BuildContext context, WidgetRef ref) {
+    final isSignedIn = ref.watch(isSignedInProvider);
+    final personType = actor.knownForDepartment == 'Directing' ? 'director' : 'actor';
+    final isFav = isSignedIn
+        ? ref.watch(isFavoritePersonProvider((actor.id, personType)))
+        : false;
+
     return SliverAppBar(
       expandedHeight: actor.hasProfile ? 420 : 0,
       pinned: true,
@@ -151,6 +159,33 @@ class _ActorView extends StatelessWidget {
               color: Colors.white, size: 20),
         ),
       ),
+      actions: isSignedIn
+          ? [
+              GestureDetector(
+                onTap: () => ref.read(preferencesProvider.notifier).toggle(
+                      personId: actor.id,
+                      personName: actor.name,
+                      personType: personType,
+                      profilePath: actor.profilePath,
+                    ),
+                child: Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
+                      isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      color: isFav ? Colors.redAccent : Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ]
+          : null,
       flexibleSpace: actor.hasProfile
           ? FlexibleSpaceBar(
               background: Stack(

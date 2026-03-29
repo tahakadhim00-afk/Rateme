@@ -16,7 +16,9 @@ void main() async {
     anonKey: Secrets.supabaseAnonKey,
   );
 
-  await NotificationService.init();
+  // Fire-and-forget: do not block runApp on notification permission dialogs.
+  // On Android 13+ the system permission prompt would freeze the app if awaited.
+  NotificationService.init().ignore();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(statusBarColor: Color.fromARGB(0, 165, 165, 165)),
