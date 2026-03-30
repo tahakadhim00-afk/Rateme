@@ -15,6 +15,9 @@ class RatingShareCard extends StatelessWidget {
   /// Display name of the user sharing the card.
   final String? username;
 
+  /// Optional short review text shown on the card. Hidden when null or empty.
+  final String? review;
+
   /// Controls which part of the backdrop is shown (e.g. pan left/right).
   /// Defaults to [Alignment.center].
   final Alignment backdropAlignment;
@@ -26,6 +29,7 @@ class RatingShareCard extends StatelessWidget {
     required this.posterUrl,
     required this.rating,
     this.username,
+    this.review,
     this.backdropAlignment = Alignment.center,
   });
 
@@ -91,7 +95,7 @@ class RatingShareCard extends StatelessWidget {
                       padding:
                           EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       child: Text(
-                        'MY RATING',
+                        'MY REVIEW',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 11,
@@ -129,6 +133,23 @@ class RatingShareCard extends StatelessWidget {
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
+                    ),
+                  ],
+
+                  if (review != null && review!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      '"$review"',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        color: Color(0xCCFFFFFF),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        fontStyle: FontStyle.normal,
+                        height: 1.45,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
 

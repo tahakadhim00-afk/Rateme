@@ -155,6 +155,19 @@ class ListsNotifier extends StateNotifier<Map<ListType, List<UserListItem>>> {
     }
   }
 
+  Future<void> updateReview(int mediaId, String? review) async {
+    state = {
+      for (final entry in state.entries)
+        entry.key: entry.value.map((item) {
+          if (item.mediaId == mediaId) return item.copyWith(review: review);
+          return item;
+        }).toList(),
+    };
+    if (supabaseService.isSignedIn) {
+      await supabaseService.updateReview(mediaId, review);
+    }
+  }
+
   Future<void> updateGenreIds(int mediaId, List<int> genreIds) async {
     if (genreIds.isEmpty) return;
     state = {

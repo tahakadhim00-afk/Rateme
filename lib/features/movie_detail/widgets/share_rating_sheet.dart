@@ -25,6 +25,9 @@ class ShareRatingSheet extends ConsumerStatefulWidget {
   /// Display name of the signed-in user.
   final String? username;
 
+  /// Optional review text to display on the card.
+  final String? review;
+
   /// When provided, enables the "Edit Background" button which fetches
   /// backdrops for this media from TMDB. Leave null to hide the button
   /// (e.g. for episode ratings).
@@ -38,6 +41,7 @@ class ShareRatingSheet extends ConsumerStatefulWidget {
     required this.posterUrl,
     required this.rating,
     this.username,
+    this.review,
     this.mediaId,
     this.mediaType = 'movie',
   });
@@ -214,6 +218,7 @@ class _ShareRatingSheetState extends ConsumerState<ShareRatingSheet> {
                 posterUrl: _effectiveBackdropUrl,
                 rating: widget.rating,
                 username: widget.username,
+                review: widget.review,
                 backdropAlignment: _backdropAlignment,
               ),
             ),
@@ -432,6 +437,7 @@ class _ShareRatingSheetState extends ConsumerState<ShareRatingSheet> {
                         posterUrl: _pendingBackdropUrl,
                         rating: widget.rating,
                         username: widget.username,
+                        review: widget.review,
                         backdropAlignment: _pendingAlignment,
                       ),
                     ),

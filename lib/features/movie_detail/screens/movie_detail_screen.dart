@@ -57,6 +57,29 @@ class _DetailView extends ConsumerStatefulWidget {
 
 class _DetailViewState extends ConsumerState<_DetailView> {
   double _userRating = 0;
+  final _reviewController = TextEditingController();
+  final _reviewFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _reviewFocusNode.addListener(() {
+      if (!_reviewFocusNode.hasFocus) {
+        final text = _reviewController.text.trim();
+        ref.read(listsProvider.notifier).updateReview(
+              widget.movie.id,
+              text.isEmpty ? null : text,
+            );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _reviewController.dispose();
+    _reviewFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -75,6 +98,9 @@ class _DetailViewState extends ConsumerState<_DetailView> {
     if (saved != null && saved > 0) {
       // userRating is stored 0–10; RatingBar uses 0–5 half-star scale
       setState(() => _userRating = saved / 2);
+    }
+    if (_reviewController.text.isEmpty && item?.review != null) {
+      _reviewController.text = item!.review!;
     }
   }
 
@@ -808,6 +834,19 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 14),
+              TextField(
+                controller: _reviewController,
+                focusNode: _reviewFocusNode,
+                maxLength: 140,
+                maxLines: 3,
+                minLines: 1,
+                style: Theme.of(context).textTheme.bodyMedium,
+                decoration: InputDecoration(
+                  hintText: 'What did you think? (optional)',
+                  counterStyle: Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -869,6 +908,9 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         posterUrl: posterUrl,
         rating: _userRating,
         username: username,
+        review: _reviewController.text.trim().isEmpty
+            ? null
+            : _reviewController.text.trim(),
         mediaId: movie.id,
         mediaType: 'movie',
       ),

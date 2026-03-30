@@ -53,6 +53,29 @@ class _TvDetailView extends ConsumerStatefulWidget {
 
 class _TvDetailViewState extends ConsumerState<_TvDetailView> {
   double _userRating = 0;
+  final _reviewController = TextEditingController();
+  final _reviewFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _reviewFocusNode.addListener(() {
+      if (!_reviewFocusNode.hasFocus) {
+        final text = _reviewController.text.trim();
+        ref.read(listsProvider.notifier).updateReview(
+              widget.tv.id,
+              text.isEmpty ? null : text,
+            );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _reviewController.dispose();
+    _reviewFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -70,6 +93,9 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
     final saved = item?.userRating;
     if (saved != null && saved > 0) {
       setState(() => _userRating = saved / 2);
+    }
+    if (_reviewController.text.isEmpty && item?.review != null) {
+      _reviewController.text = item!.review!;
     }
   }
 
@@ -626,6 +652,19 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 14),
+              TextField(
+                controller: _reviewController,
+                focusNode: _reviewFocusNode,
+                maxLength: 140,
+                maxLines: 3,
+                minLines: 1,
+                style: Theme.of(context).textTheme.bodyMedium,
+                decoration: InputDecoration(
+                  hintText: 'What did you think? (optional)',
+                  counterStyle: Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -699,6 +738,9 @@ class _TvDetailViewState extends ConsumerState<_TvDetailView> {
         posterUrl: posterUrl,
         rating: _userRating,
         username: username,
+        review: _reviewController.text.trim().isEmpty
+            ? null
+            : _reviewController.text.trim(),
         mediaId: tv.id,
         mediaType: 'tv',
       ),

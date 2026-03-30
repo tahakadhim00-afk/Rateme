@@ -10,6 +10,7 @@ class UserListItem {
   final String mediaType;
   final DateTime addedAt;
   final double? userRating;
+  final String? review;
   final int? runtime;
   final List<int> genreIds;
 
@@ -23,6 +24,7 @@ class UserListItem {
     this.mediaType = 'movie',
     required this.addedAt,
     this.userRating,
+    this.review,
     this.runtime,
     this.genreIds = const [],
   });
@@ -48,6 +50,7 @@ class UserListItem {
       mediaType: json['media_type'] as String? ?? 'movie',
       addedAt: DateTime.parse(json['added_at'] as String),
       userRating: (json['user_rating'] as num?)?.toDouble(),
+      review: json['review'] as String?,
       runtime: json['runtime'] as int?,
       genreIds: (json['genre_ids'] as List<dynamic>?)
               ?.map((e) => e as int)
@@ -56,7 +59,7 @@ class UserListItem {
     );
   }
 
-  UserListItem copyWith({double? userRating, List<int>? genreIds}) {
+  UserListItem copyWith({double? userRating, String? review, List<int>? genreIds}) {
     return UserListItem(
       mediaId: mediaId,
       title: title,
@@ -67,6 +70,7 @@ class UserListItem {
       mediaType: mediaType,
       addedAt: addedAt,
       userRating: userRating ?? this.userRating,
+      review: review ?? this.review,
       runtime: runtime,
       genreIds: genreIds ?? this.genreIds,
     );

@@ -70,6 +70,7 @@ class SupabaseService {
       'media_type': item.mediaType,
       'added_at': item.addedAt.toIso8601String(),
       'user_rating': item.userRating,
+      'review': item.review,
       'runtime': item.runtime,
       'genre_ids': item.genreIds.isEmpty ? null : item.genreIds,
     }, onConflict: 'user_id,media_id,list_type');
@@ -94,6 +95,17 @@ class SupabaseService {
     await client
         .from('user_lists')
         .update({'user_rating': rating})
+        .eq('user_id', user.id)
+        .eq('media_id', mediaId);
+  }
+
+  Future<void> updateReview(int mediaId, String? review) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    await client
+        .from('user_lists')
+        .update({'review': review})
         .eq('user_id', user.id)
         .eq('media_id', mediaId);
   }
