@@ -8,6 +8,10 @@ class TmdbService {
   late final Dio _dio;
 
   TmdbService() {
+    assert(
+      AppConstants.tmdbReadToken.isNotEmpty,
+      'TMDB_READ_TOKEN is empty — build with --dart-define-from-file=dart_defines/secrets.json',
+    );
     _dio = Dio(BaseOptions(
       baseUrl: AppConstants.tmdbBaseUrl,
       headers: {

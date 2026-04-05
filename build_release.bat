@@ -6,11 +6,11 @@
 set SYMBOL_DIR=build\debug-info
 
 echo Building Android APK...
-flutter build apk --release --obfuscate --split-debug-info=%SYMBOL_DIR%\android
+flutter build apk --release --dart-define-from-file=dart_defines/secrets.json --obfuscate --split-debug-info=%SYMBOL_DIR%\android
 
 echo.
 echo Building Android App Bundle...
-flutter build appbundle --release --obfuscate --split-debug-info=%SYMBOL_DIR%\android-aab
+flutter build appbundle --release --dart-define-from-file=dart_defines/secrets.json --obfuscate --split-debug-info=%SYMBOL_DIR%\android-aab
 
 echo.
 echo Done. Symbols saved to %SYMBOL_DIR%\
