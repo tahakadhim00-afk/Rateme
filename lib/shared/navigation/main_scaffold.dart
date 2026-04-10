@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,7 @@ class MainScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final index = _currentIndex(context);
     return Scaffold(
+      extendBody: true,
       body: child,
       bottomNavigationBar: _BottomNav(currentIndex: index),
     );
@@ -68,15 +70,19 @@ class _BottomNav extends ConsumerWidget {
       );
     }
 
-    return Container(
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
       decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
         border: Border(top: BorderSide(
           color: Theme.of(context).dividerColor,
           width: 0.5,
         )),
       ),
       child: NavigationBar(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
         indicatorColor: Colors.transparent,
         selectedIndex: currentIndex,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -115,6 +121,8 @@ class _BottomNav extends ConsumerWidget {
             label: 'Profile',
           ),
         ],
+      ),
+        ),
       ),
     );
   }
