@@ -1,35 +1,14 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/models/movie.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/tmdb_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/google_sign_in_button.dart';
-
-class _Slide {
-  final String image;
-  final String title;
-  final String subtitle;
-  const _Slide({required this.image, required this.title, required this.subtitle});
-}
-
-const _kSlides = [
-  _Slide(
-    image: 'assets/logo_and_images/rate_films_shows.png',
-    title: 'Rate Films & Shows',
-    subtitle: 'Share your thoughts on every title you watch',
-  ),
-  _Slide(
-    image: 'assets/logo_and_images/creating_list.png',
-    title: 'Build Your Lists',
-    subtitle: 'Track watched titles and save what\'s next',
-  ),
-  _Slide(
-    image: 'assets/logo_and_images/sync.png',
-    title: 'Sync Everywhere',
-    subtitle: 'Your lists stay with you across all devices',
-  ),
-];
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -40,56 +19,51 @@ class SignInScreen extends ConsumerStatefulWidget {
 
 class _SignInScreenState extends ConsumerState<SignInScreen>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _animController;
+  late final AnimationController _uiAnim;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
-  late final PageController _pageController;
-  Timer? _slideTimer;
-  int _currentPage = 0;
+
+  Timer? _cycleTimer;
+  int _currentIndex = 0;
+  List<({Movie film, String posterPath})> _entries = [];
   bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
+    _uiAnim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1000),
     );
-    _fadeAnim =
-        CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(parent: _uiAnim, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.08),
+      begin: const Offset(0, 0.05),
       end: Offset.zero,
-    ).animate(
-        CurvedAnimation(parent: _animController, curve: Curves.easeOut));
-    _animController.forward();
-
-    _pageController = PageController();
-    _slideTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      final next = (_currentPage + 1) % _kSlides.length;
-      _pageController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    });
+    ).animate(CurvedAnimation(parent: _uiAnim, curve: Curves.easeOut));
+    _uiAnim.forward();
   }
 
   @override
   void dispose() {
-    _animController.dispose();
-    _pageController.dispose();
-    _slideTimer?.cancel();
+    _uiAnim.dispose();
+    _cycleTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCycling(List<({Movie film, String posterPath})> entries) {
+    if (_cycleTimer != null) return;
+    _entries = entries;
+    _cycleTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted) return;
+      setState(() => _currentIndex = (_currentIndex + 1) % _entries.length);
+    });
   }
 
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
-      // signInWithOAuth just launches the browser — the session arrives later
-      // via the deep-link callback. Navigation happens in the ref.listen below.
       await ref.read(authNotifierProvider.notifier).signInWithGoogle();
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -107,173 +81,305 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Navigate as soon as the OAuth callback lands and the session is real.
     ref.listen<bool>(isSignedInProvider, (_, isSignedIn) {
       if (isSignedIn && mounted) context.go('/home');
     });
 
+    final splashAsync = ref.watch(splashPostersProvider);
+    splashAsync.whenData((entries) {
+      if (entries.isNotEmpty && _cycleTimer == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _startCycling(entries);
+        });
+      }
+    });
+
+    final current = _entries.isNotEmpty ? _entries[_currentIndex] : null;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: SlideTransition(
-            position: _slideAnim,
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                // ── Logo + title + subtitle ────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  child: Column(
-                    children: [
-                      Image.asset(
-                        'assets/logo_and_images/app_bar.png',
-                        width: 64,
-                        height: 64,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'RateMe',
-                        style: Theme.of(context)
-                            .textTheme
-                            .displayLarge
-                            ?.copyWith(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Your personal cinema journal.\nRate, save & discover.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: AppThemeColors.of(context).textSecondary,
-                              height: 1.55,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // ── Illustration carousel ──────────────────────────────────
-                Expanded(
-                  child: PageView.builder(
-                    controller: _pageController,
-                    itemCount: _kSlides.length,
-                    onPageChanged: (i) => setState(() => _currentPage = i),
-                    itemBuilder: (context, i) {
-                      final slide = _kSlides[i];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Image.asset(
-                                slide.image,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              slide.title,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              slide.subtitle,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: AppThemeColors.of(context)
-                                        .textSecondary,
-                                  ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                // Dot indicators
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    _kSlides.length,
-                    (i) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: _currentPage == i ? 20 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: _currentPage == i
-                            ? AppColors.primary
-                            : AppThemeColors.of(context).border,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // ── Layer 1: Full-screen poster image ────────────────────────────
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 800),
+            transitionBuilder: (child, anim) =>
+                FadeTransition(opacity: anim, child: child),
+            child: current != null
+                ? CachedNetworkImage(
+                    key: ValueKey('poster_${current.film.id}'),
+                    imageUrl: AppConstants.posterUrl(
+                      current.posterPath,
+                      size: AppConstants.posterOriginal,
                     ),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    placeholder: (_, _) =>
+                        const ColoredBox(color: Colors.black),
+                    errorWidget: (_, _, _) =>
+                        const ColoredBox(color: Colors.black),
+                  )
+                : const ColoredBox(
+                    key: ValueKey('poster_empty'),
+                    color: Colors.black,
                   ),
-                ),
-                const SizedBox(height: 20),
-                // ── Buttons ────────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  child: Column(
-                    children: [
-                      GoogleSignInButton(
-                        loading: _loading,
-                        onTap: _signInWithGoogle,
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: _skip,
-                        style: TextButton.styleFrom(
-                          foregroundColor:
-                              AppThemeColors.of(context).textMuted,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
-                        ),
-                        child: Text(
-                          'Skip for now',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            decoration: TextDecoration.underline,
-                            decorationColor:
-                                AppThemeColors.of(context).textMuted,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'By signing in, you agree to our Terms & Privacy Policy.',
-                        textAlign: TextAlign.center,
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppThemeColors.of(context).textMuted,
-                                  fontSize: 11,
-                                ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              ],
+          ),
+
+          // ── Layer 2: Gradient overlay — black from bottom ────────────────
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0.0, 0.35, 0.65, 1.0],
+                colors: [
+                  Color(0x00000000),
+                  Color(0x55000000),
+                  Color(0xCC000000),
+                  Color(0xFF000000),
+                ],
+              ),
             ),
           ),
-        ),
+
+          // ── Layer 3: UI Content ──────────────────────────────────────────
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Column(
+                  children: [
+                    const Spacer(),
+
+                    // ── Film title + meta ──────────────────────────────────
+                    if (current != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
+                        child: Column(
+                          children: [
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 500),
+                              child: Text(
+                                current.film.title,
+                                key: ValueKey('title_${current.film.id}'),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.3,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.star_rounded,
+                                    color: AppColors.primary, size: 14),
+                                const SizedBox(width: 4),
+                                Text(
+                                  current.film.ratingFormatted,
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: AppColors.primary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if (current.film.year.isNotEmpty) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    child: Container(
+                                      width: 3,
+                                      height: 3,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white24,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    current.film.year,
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      color: Colors.white38,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 28),
+
+                    // ── Divider ────────────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 1,
+                              color: Colors.white.withValues(alpha: 0.07),
+                            ),
+                          ),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 14),
+                            child: Container(
+                              width: 4,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Container(
+                              height: 1,
+                              color: Colors.white.withValues(alpha: 0.07),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── App identity ───────────────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/logo_and_images/app_bar.png',
+                          width: 28,
+                          height: 28,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'RateMe',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'Your personal cinema journal',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        color: Colors.white38,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // ── Buttons ────────────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        children: [
+                          GoogleSignInButton(
+                            loading: _loading,
+                            onTap: _signInWithGoogle,
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54,
+                            child: OutlinedButton(
+                              onPressed: null,
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor:
+                                    Colors.white.withValues(alpha: 0.06),
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  width: 1,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                'Create an account',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white38,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.1,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          GestureDetector(
+                            onTap: _skip,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Text(
+                                'Skip for now',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor:
+                                      Colors.white.withValues(alpha: 0.2),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 6),
+
+                          Text(
+                            'By signing in, you agree to our Terms & Privacy Policy.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              color: Colors.white.withValues(alpha: 0.18),
+                              fontSize: 10,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-
