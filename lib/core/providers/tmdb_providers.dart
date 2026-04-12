@@ -33,6 +33,22 @@ final upcomingProvider = FutureProvider<List<Movie>>((ref) async {
   return results.where((m) => m.voteAverage < 10.0).toList();
 });
 
+/// Fetches the first 4 now-playing films and resolves a clean, logo-free
+/// poster for each (language-neutral from TMDB /images, falls back to posterPath).
+final splashPostersProvider =
+    FutureProvider<List<({Movie film, String posterPath})>>((ref) async {
+  final films = await ref.watch(nowPlayingProvider.future);
+  final candidates = films.where((m) => m.hasPoster).take(4).toList();
+  final service = ref.read(tmdbServiceProvider);
+  final results = <({Movie film, String posterPath})>[];
+  for (final film in candidates) {
+    final clean = await service.getCleanPoster(film.id);
+    final path = clean ?? film.posterPath ?? '';
+    if (path.isNotEmpty) results.add((film: film, posterPath: path));
+  }
+  return results;
+});
+
 final movieDetailProvider =
     FutureProvider.family<MovieDetail, int>((ref, movieId) async {
   return ref.watch(tmdbServiceProvider).getMovieDetail(movieId);

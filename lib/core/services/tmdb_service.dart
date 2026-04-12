@@ -285,6 +285,21 @@ class TmdbService {
         .toList();
   }
 
+  // ── Clean posters (no text / logo overlay, language-neutral) ─────────────
+
+  Future<String?> getCleanPoster(int movieId) async {
+    final resp = await _dio.get(
+      '/movie/$movieId/images',
+      queryParameters: {'include_image_language': 'null'},
+    );
+    final posters = resp.data['posters'] as List<dynamic>? ?? [];
+    final paths = posters
+        .map((e) => e['file_path'] as String? ?? '')
+        .where((p) => p.isNotEmpty)
+        .toList();
+    return paths.isNotEmpty ? paths.first : null;
+  }
+
   // ── Paginated dispatcher (used by infinite-scroll sections) ───────────────
 
   Future<List<Movie>> getPage(String category, int page) async {

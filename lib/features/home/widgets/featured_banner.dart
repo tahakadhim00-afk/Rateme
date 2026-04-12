@@ -26,12 +26,14 @@ class _FeaturedBannerState extends State<FeaturedBanner> {
   @override
   void initState() {
     super.initState();
-    _controller = PageController(viewportFraction: 0.88);
-    _startTimer();
     final movies = widget.movies.take(5).toList();
+    final mid = movies.length ~/ 2;
+    _current = mid;
+    _controller = PageController(viewportFraction: 0.62, initialPage: mid);
+    _startTimer();
     if (movies.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.onMovieChanged?.call(movies[0]);
+        widget.onMovieChanged?.call(movies[mid]);
       });
     }
   }
@@ -66,26 +68,32 @@ class _FeaturedBannerState extends State<FeaturedBanner> {
       mainAxisSize: MainAxisSize.min,
       children: [
         // Card Carousel
-        SizedBox(
-          height: 340,
-          child: PageView.builder(
-            controller: _controller,
-            itemCount: movies.length,
-            onPageChanged: (i) {
-              setState(() => _current = i);
-              _startTimer();
-              widget.onMovieChanged?.call(movies[i]);
-            },
-            itemBuilder: (ctx, i) {
-              final isActive = i == _current;
-              return AnimatedScale(
-                scale: isActive ? 1.0 : 0.95,
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeOutCubic,
-                child: _BannerCard(movie: movies[i]),
-              );
-            },
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth = constraints.maxWidth * 0.62;
+            final cardHeight = cardWidth * 1.5; // 2:3 poster ratio
+            return SizedBox(
+              height: cardHeight,
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: movies.length,
+                onPageChanged: (i) {
+                  setState(() => _current = i);
+                  _startTimer();
+                  widget.onMovieChanged?.call(movies[i]);
+                },
+                itemBuilder: (ctx, i) {
+                  final isActive = i == _current;
+                  return AnimatedScale(
+                    scale: isActive ? 1.0 : 0.93,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                    child: _BannerCard(movie: movies[i]),
+                  );
+                },
+              ),
+            );
+          },
         ),
 
         // Pagination dots — below the carousel
@@ -152,30 +160,18 @@ class _BannerCard extends ConsumerWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Backdrop / Poster image
-              movie.hasBackdrop
+              // Poster image at original resolution
+              movie.hasPoster
                   ? CachedNetworkImage(
-                      imageUrl: AppConstants.backdropUrl(movie.backdropPath!),
+                      imageUrl: AppConstants.posterUrl(
+                        movie.posterPath!,
+                        size: AppConstants.posterOriginal,
+                      ),
                       fit: BoxFit.cover,
-                      errorWidget: (_, e, s) => movie.hasPoster
-                          ? CachedNetworkImage(
-                              imageUrl: AppConstants.posterUrl(movie.posterPath!,
-                                  size: AppConstants.posterW500),
-                              fit: BoxFit.cover,
-                              alignment: Alignment.topCenter,
-                              errorWidget: (_, e, s) => Container(color: bg),
-                            )
-                          : Container(color: bg),
+                      alignment: Alignment.topCenter,
+                      errorWidget: (_, e, s) => Container(color: bg),
                     )
-                  : (movie.hasPoster
-                      ? CachedNetworkImage(
-                          imageUrl: AppConstants.posterUrl(movie.posterPath!,
-                              size: AppConstants.posterW500),
-                          fit: BoxFit.cover,
-                          alignment: Alignment.topCenter,
-                          errorWidget: (_, e, s) => Container(color: bg),
-                        )
-                      : Container(color: bg)),
+                  : Container(color: bg),
 
               // Bottom gradient for title legibility
               Positioned.fill(
