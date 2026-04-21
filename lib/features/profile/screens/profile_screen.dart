@@ -145,7 +145,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                             child: _SettingsCard(isSignedIn: isSignedIn),
                           ),
                         ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 48)),
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: MediaQuery.of(context).padding.bottom + 16,
+                          ),
+                        ),
                       ],
                     ),
                   ),

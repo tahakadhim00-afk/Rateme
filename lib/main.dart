@@ -21,7 +21,9 @@ void main() async {
   NotificationService.init().ignore();
 
   SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(statusBarColor: Color.fromARGB(0, 165, 165, 165)),
+    const SystemUiOverlayStyle(
+      statusBarColor: Color.fromARGB(0, 165, 165, 165),
+    ),
   );
 
   runApp(const ProviderScope(child: RateMeApp()));
