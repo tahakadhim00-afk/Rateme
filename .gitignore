@@ -47,6 +47,13 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# IDE / editor
+.vscode/
+
+# Local planning docs
+APP_DESIGN.md
+PRD.html
+
 # Secrets — never commit real credentials
 lib/core/config/secrets.dart
 dart_defines/secrets.json
