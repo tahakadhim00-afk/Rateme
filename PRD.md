@@ -1,96 +1,127 @@
-
-API Read Access Token
-TMDB_READ_TOKEN_REMOVED
-API Key
-TMDB_API_KEY_REMOVED
-
-
-
-# 📄 Product Requirements Document (PRD) – Rate Me App
+# Product Requirements Document – Rate Me App
 
 ## 1. Vision
-Build the first Iraqi app dedicated to rating movies and TV shows, combining global data from TMDb with a localized experience. Users can log in, rate content, create personal lists (favorites, watched, watch later), and share their opinions with the community.
+The first Iraqi app dedicated to rating movies and TV shows, combining global data from TMDb with a localized experience. Users sign in, rate content, build personal lists, and share their picks with the community.
 
 ---
 
 ## 2. Goals
-- Provide a simple and engaging platform for rating movies and TV shows.  
-- Support both Arabic and English languages.  
-- Deliver a localized experience (e.g., “Top 10 movies in Iraq this month”).  
-- Implement secure authentication and storage using Supabase (PostgreSQL + Auth).  
-- Integrate TMDb API for global movie and TV show data.  
+- Simple, engaging platform for rating movies and TV shows.
+- Support Arabic and English languages *(Arabic pending)*.
+- Localized experience (e.g., "Top 10 in Iraq this month") *(planned)*.
+- Secure authentication and storage via Supabase (PostgreSQL + Auth).
+- TMDb API for global movie and TV show data.
 
 ---
 
 ## 3. Target Audience
-- Iraqi and Arab youth passionate about cinema and TV shows.  
-- Critics and enthusiasts who want to share reviews.  
-- Users seeking both local and global recommendations.  
+- Iraqi and Arab youth passionate about cinema and TV.
+- Critics and enthusiasts who want to share reviews.
+- Users seeking local and global recommendations.
 
 ---
 
-## 4. Core Features
-### A. Authentication
-- Email + password login.  
-- OAuth login (Google, Facebook).  
-- User profile management (username, avatar, language settings).  
+## 4. Features
 
-### B. Lists
-- **Favorites**: Save favorite movies.  
-- **Watched**: Track watched content.  
-- **Watch Later**: Save shows/movies for future viewing.  
-- Ability to create custom lists (e.g., “Best Iraqi Films”).  
+### Authentication ✅
+- Google OAuth via Supabase.
+- Account deletion.
+- Sign-in gate for all protected features (lists, ratings).
+- Guest browsing (read-only, no auth required).
 
-### C. Ratings & Reviews
-- Rating system (stars 1–5 or localized icons).  
-- Short text reviews.  
-- Voting on “most helpful review.”  
+### Lists ✅
+- **Watched** — track what you've seen.
+- **Watch Later** — save for future viewing.
+- **Custom Lists** — user-created lists (e.g., "Best Iraqi Films").
+- Persisted via Supabase, tied to authenticated user.
 
-### D. TMDb Integration
-- Fetch movie/TV data (title, poster, description, genre).  
-- Search by name or category.  
-- Display trending/popular movies globally.  
+### Ratings & Reviews ✅
+- 0–10 rating scale per movie/TV show.
+- Short text reviews stored in Supabase.
+- TMDb community vote average displayed alongside personal rating.
 
-### E. UI/UX
-- Modern, minimal design using Flutter.  
-- Bilingual support (Arabic/English).  
-- Smooth experience with high-quality visuals.  
+### TMDb Integration ✅
+- Trending, top-rated, and upcoming content.
+- Movie and TV series detail pages (genres, cast, runtime, seasons/episodes).
+- Actor profile pages.
+- Search by title.
+- Adult content blocking + vote-count validation.
+
+### Share Cards ✅
+- **Rating Card** — share your personal rating as an image.
+- **Recommendation Card** — share a movie/show recommendation.
+- Generated as image files and shared via native share sheet.
+
+### Notifications ✅
+- Daily local reminder (configurable time, stored in secure storage).
+- *(Push notifications not yet implemented.)*
+
+### UI/UX ✅
+- Flutter, dark mode.
+- Bottom navigation: Home, Search, Lists, Profile.
+- Deep links: `/movie/:id`, `/tv/:id`.
+- Shimmer loading, cached images, smooth animations.
+- Carousel banners, blurred bottom nav, poster splash screen.
 
 ---
 
 ## 5. Technical Architecture
-- **Frontend:** Flutter.  
-- **Backend:** Supabase (PostgreSQL + Auth + Storage).  
-- **Database Design:**  
-  - `users`  
-  - `movies` (from TMDb)  
-  - `lists`  
-  - `user_lists` (linking users, lists, and movies).  
-- **API Integration:** TMDb API via `http` or `dio`.  
-- **Caching:** Local SQLite for faster list rendering.  
+- **Frontend:** Flutter (Dart).
+- **Backend:** Supabase (PostgreSQL + Auth + Storage).
+- **API:** TMDb (REST, injected at build time via `--dart-define-from-file`).
+- **Secrets:** `dart_defines/secrets.json` (gitignored) — copy from `secrets.example.json`.
+- **Local storage:** `flutter_secure_storage` for settings/reminders.
+- **Image caching:** `cached_network_image`.
+- **Sharing:** `share_plus` + `screenshot` package.
+
+### Database Schema
+| Table | Purpose |
+|---|---|
+| `users` | Auth + profile data |
+| `user_lists` | `user_id + movie_id + list_type` |
+| `ratings` | `user_id + movie_id + score + review` |
 
 ---
 
 ## 6. Workflow
-1. User signs in via Supabase.  
-2. User browses movies fetched from TMDb.  
-3. User adds a movie to a list (favorites, watched, watch later).  
-4. Database stores only `user_id + movie_id + list_id`.  
-5. When displaying lists, the app fetches movie details from TMDb.  
+1. User opens app → guest browse or Google sign-in.
+2. Browse movies/TV fetched from TMDb (trending, search, genre).
+3. Sign-in required to rate, review, or save to lists.
+4. Only `user_id + tmdb_id + list_type` stored; details fetched from TMDb on demand.
+5. Share rating or recommendation card via native share sheet.
 
 ---
 
 ## 7. Milestones
-- **Phase 1:** Authentication + movie browsing.  
-- **Phase 2:** Lists creation and movie saving.  
-- **Phase 3:** Ratings and reviews system.  
-- **Phase 4:** UI/UX enhancements + Arabic language support.  
-- **Phase 5:** Local beta launch.  
+| Phase | Status |
+|---|---|
+| Auth + movie browsing | ✅ Done |
+| Lists (watched, watch later, custom) | ✅ Done |
+| Ratings + text reviews | ✅ Done |
+| Share cards | ✅ Done |
+| Actor pages, TV seasons/episodes | ✅ Done |
+| Arabic language support | 🔲 Planned |
+| Local Iraq trending / community feed | 🔲 Planned |
+| Push notifications | 🔲 Planned |
+| Email/password sign-up | 🔲 Planned |
 
 ---
 
-## 8. Success Metrics (KPIs)
-- Number of registered users.  
-- Number of movies added to lists.  
-- Engagement rate (ratings/reviews).  
-- User satisfaction via surveys.  
+## 8. Success Metrics
+- Registered users count.
+- Movies/shows added to lists.
+- Ratings and reviews submitted.
+- Share card interactions.
+- User satisfaction via surveys.
+
+---
+
+## 9. Running Locally
+```bash
+# 1. Copy secrets template
+cp dart_defines/secrets.example.json dart_defines/secrets.json
+# 2. Fill in TMDB_API_KEY, TMDB_READ_TOKEN, SUPABASE_URL, SUPABASE_ANON_KEY
+
+# 3. Run
+flutter run --dart-define-from-file=dart_defines/secrets.json
+```
