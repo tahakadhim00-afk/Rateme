@@ -21,6 +21,46 @@ class SupabaseService {
     );
   }
 
+  Future<AuthResponse> signUpWithEmail({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    return await client.auth.signUp(
+      email: email,
+      password: password,
+      data: {'full_name': name},
+    );
+  }
+
+  Future<AuthResponse> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    return await client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  Future<AuthResponse> verifyEmailOtp({
+    required String email,
+    required String token,
+  }) async {
+    return await client.auth.verifyOTP(
+      email: email,
+      token: token,
+      type: OtpType.signup,
+    );
+  }
+
+  Future<void> resendConfirmation(String email) async {
+    await client.auth.resend(
+      type: OtpType.signup,
+      email: email,
+    );
+  }
+
   Future<void> signOut() async {
     await client.auth.signOut();
   }

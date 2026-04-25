@@ -8,6 +8,8 @@ import '../../features/tv_detail/screens/tv_detail_screen.dart';
 import '../../features/tv_detail/screens/tv_season_screen.dart';
 import '../../features/actor/screens/actor_profile_screen.dart';
 import '../../features/auth/screens/sign_in_screen.dart';
+import '../../features/auth/screens/sign_up_screen.dart';
+import '../../features/auth/screens/verify_otp_screen.dart';
 import '../../features/home/screens/see_all_screen.dart';
 import '../../core/services/supabase_service.dart';
 import 'main_scaffold.dart';
@@ -43,6 +45,17 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/signin',
       builder: (ctx, state) => const SignInScreen(),
+    ),
+    GoRoute(
+      path: '/signup',
+      builder: (ctx, state) => const SignUpScreen(),
+    ),
+    GoRoute(
+      path: '/verify-otp',
+      builder: (ctx, state) {
+        final email = state.uri.queryParameters['email'] ?? '';
+        return VerifyOtpScreen(email: email);
+      },
     ),
     ShellRoute(
       builder: (context, state, child) => MainScaffold(child: child),

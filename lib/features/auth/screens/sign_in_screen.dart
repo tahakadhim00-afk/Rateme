@@ -312,7 +312,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
                             width: double.infinity,
                             height: 54,
                             child: OutlinedButton(
-                              onPressed: null,
+                              onPressed: () => context.push('/signup'),
                               style: OutlinedButton.styleFrom(
                                 backgroundColor:
                                     Colors.white.withValues(alpha: 0.06),
@@ -328,7 +328,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
                                 'Create an account',
                                 style: TextStyle(
                                   fontFamily: 'Poppins',
-                                  color: Colors.white38,
+                                  color: Colors.white70,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 0.1,
