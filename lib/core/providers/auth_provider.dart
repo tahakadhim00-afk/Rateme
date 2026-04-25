@@ -28,6 +28,59 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
+  Future<void> signUpWithEmail({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      await supabaseService.signUpWithEmail(
+        name: name,
+        email: email,
+        password: password,
+      );
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      await supabaseService.signInWithEmail(email: email, password: password);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> verifyEmailOtp({
+    required String email,
+    required String token,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      await supabaseService.verifyEmailOtp(email: email, token: token);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> resendConfirmation(String email) async {
+    try {
+      await supabaseService.resendConfirmation(email);
+    } catch (_) {}
+  }
+
   Future<void> signOut() async {
     state = const AsyncValue.loading();
     try {
