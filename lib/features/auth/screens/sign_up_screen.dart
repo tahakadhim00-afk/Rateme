@@ -82,7 +82,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen>
       if (user != null) {
         context.go('/home');
       } else {
-        // Email confirmation required — go to OTP screen
         context.go('/verify-otp?email=${Uri.encodeComponent(_emailCtrl.text.trim())}');
       }
     } catch (e) {
@@ -114,6 +113,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen>
         lower.contains('user already') ||
         lower.contains('email already')) {
       return 'An account with this email already exists.';
+    }
+    if (lower.contains('rate limit') || lower.contains('over_email_send_rate_limit') || lower.contains('429')) {
+      return 'Too many sign-up attempts. Please wait a few minutes and try again.';
     }
     if (lower.contains('password') &&
         (lower.contains('short') || lower.contains('should be') || lower.contains('weak'))) {
