@@ -55,6 +55,7 @@ app.*.map.json
 
 # Local planning docs
 APP_DESIGN.md
+PRD.md
 PRD.html
 
 # Secrets — never commit real credentials
