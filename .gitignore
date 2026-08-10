@@ -1,5 +1,8 @@
-# Secrets
+# Secrets — MCP server config carries a Supabase access token
 .mcp.json
+
+# Local Claude Code config (personal tooling, not project source)
+.claude/
 
 # Miscellaneous
 *.class
@@ -33,7 +36,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+build/
 /coverage/
 
 # Symbolication related
